@@ -5,6 +5,10 @@ class TrueCausalModel:
 	"""
 	El objeto de TrueCausalModel contiene el modelo causal de la naturaleza.
 
+	Args:
+		model (BaseModel) : un objeto de la clase BaseModel que contiene al modelo
+		gráfico probabilista.
+
 	"""
 	def __init__(self, model):
 		self.model = model
