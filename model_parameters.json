@@ -1,0 +1,66 @@
+{
+  "digraph": [
+    [
+      "Enfermedad",
+      "Final"
+    ],
+    [
+      "Tratamiento",
+      "Final"
+    ],
+    [
+      "Tratamiento",
+      "Reaccion"
+    ],
+    [
+      "Reaccion",
+      "Final"
+    ]
+  ],
+  "cpdtables": [
+    {
+      "variable": "Enfermedad",
+      "variable_card" : 2,
+      "values" : [
+        [0.7, 0.3]
+      ]
+    },
+    {
+      "variable": "Tratamiento",
+      "variable_card" : 2,
+      "values" : [
+        [0.5, 0.5]
+      ]
+    },
+    {
+      "variable": "Reaccion",
+      "variable_card" : 2,
+      "values" : [
+        [0.7, 0.4],
+        [0.3, 0.6]
+      ],
+      "evidence_card" : [2],
+      "evidence" : ["Tratamiento"]
+    },
+    {
+      "variable": "Final",
+      "variable_card" : 2,
+      "values" : [
+        [0.6, 0, 0.8, 0, 0.4, 0, 0.9, 0],
+        [0.4, 1, 0.2, 1, 0.6, 1, 0.1, 1]
+      ],
+      "evidence_card" : [2, 2, 2],
+      "evidence" : [
+        "Enfermedad",
+        "Tratamiento",
+        "Reaccion"
+      ]
+    }
+  ],
+  "targets":[
+    "Final"
+  ],
+  "nature_variables": [
+    "Enfermedad"
+  ]
+}
