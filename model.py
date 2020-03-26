@@ -15,6 +15,8 @@ class BaseModel(object):
 	Args:
 		config_file_path (str) : la ruta al json con la información de
 		DAG y sus tablas de probabilidad condicional. 
+
+	to-do : por ahora sólo funciona con valores binarias. 
 	"""
 	def __init__(self, config_file_path):
 		self.config_file_path = config_file_path
@@ -111,7 +113,19 @@ class BaseModel(object):
 		del DAG.
 		"""
 		return list(nx.topological_sort(self.digraph))
-
+	def get_nodes_and_predecessors(self):
+		"""
+		Regresa un arreglo de duplas nodo, predecesores ordenados.
+		"""
+		return { node : sorted(self.digraph.predecessors(node)) \
+			for node in self.digraph.nodes
+		}
+	def get_number_of_values(self, variable):
+		"""
+		to-do : un método para que me regrese cuantos valores posibles tiene
+		una variable y tal vez hasta los valores correspondientes
+		"""
+		pass
 def main():
 	test_model = BaseModel('model_parameters.json')
 	# for cpdt in test_model.pgmodel.get_cpds():
