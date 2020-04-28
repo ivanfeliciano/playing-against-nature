@@ -17,7 +17,7 @@ class CausalStructure(object):
     def draw_graph(self, filename="graph"):
         pos = nx.bipartite_layout(self.graph, self.causes)
         nx.draw(self.graph, pos=pos, with_labels=True)
-        plt.savefig("./drawings/{}.png".format(filename))
+        plt.savefig("{}.png".format(filename))
         plt.close()
     def get_causes(self, node, shuffle=True, threshold=0.5):
         if node not in self.graph:

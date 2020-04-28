@@ -193,12 +193,14 @@ class LightEnv(gym.GoalEnv):
                 m[self.ms] = 1
                 self.gt = self.aj.flatten()
                 self.gt = np.concatenate([self.gt, m])
+            self.goal = self._sample_goal()
         self.eprew = 0
         self.steps = 0
         self.correct = []
-        self.state = np.zeros((self.num))
+        # self.state = np.zeros((self.num))
+        self.state = np.random.randint(2, size=self.num)
         self.eps += 1
-        self.goal = self._sample_goal()
+        # self.goal = self._sample_goal()
 
         obs = self._get_obs()
         return obs

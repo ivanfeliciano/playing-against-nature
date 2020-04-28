@@ -46,7 +46,7 @@ class QLearningAgent(object):
                 total_episode_reward += reward
                 step += 1
             rewards_per_episode.append(total_episode_reward)
-            if (episode + 1) % self.mod_episode == 0:
+            if episode == 0 or (episode + 1) % self.mod_episode == 0:
                 rewards_per_episode = self.update_avg_reward(rewards_per_episode)
         return self.avg_reward
     def update_avg_reward(self, rewards_per_episode):
@@ -67,7 +67,7 @@ class QLearningAgent(object):
                 state = new_state
                 total_episode_reward += reward
             rewards_per_episode.append(total_episode_reward)
-            if (episode + 1) % self.mod_episode == 0:
+            if episode == 0 or  (episode + 1) % self.mod_episode == 0:
                 rewards_per_episode = self.update_avg_reward(rewards_per_episode)
         return self.avg_reward
     def plot_avg_reward(self, filename="average_reward"):

@@ -36,7 +36,7 @@ class LightAndSwitchEnv(Environment):
             state :  np.zeros(self.n_actions) for state in all_states
         }
     def map_obs(self, state):
-        return tuple(self.env.reset()[:self.num].astype(int))
+        return tuple(state[:self.num].astype(int))
     def reset(self):
         return self.map_obs(self.env.reset())
     def get_goal(self):
