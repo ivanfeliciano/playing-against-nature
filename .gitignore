@@ -145,5 +145,5 @@ cython_debug/
 media
 static
 
-*.png
-*.npy
+# *.png
+# *.npy
