@@ -18,6 +18,7 @@ class Policy(object):
         else:
             value = self.eps_test
         self.step = (self.step +  1) % self.nb_steps
+        # self.step += 1
         return value
     def select_action(self, state, Q, training=True):
         raise NotImplementedError
@@ -42,4 +43,6 @@ class EpsilonGreedy(Policy):
         np.random.shuffle(targets)
         for target in targets:
             actions = self.env.causal_structure.get_causes(target)
-            if len(actions) > 0: return actions.pop()      
+            if len(actions) > 0:
+                return actions.pop()      
+        return self.env.sample_action()
