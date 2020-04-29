@@ -42,7 +42,7 @@ class LightAndSwitchEnv(Environment):
     def get_goal(self):
         return self.env.goal
     def get_state(self):
-        return self.env.state
+        return self.env._get_obs()[:self.num]
     def step(self, action):
         if self.stochastic and np.random.uniform() > self.true_action_prob:
             remain_actions = [i for i in range(self.n_actions) if i != action]

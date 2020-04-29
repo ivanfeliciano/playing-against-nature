@@ -89,11 +89,11 @@ for i in range(4):
     mean_vectors[i] = np.mean(rewards[i], axis=0)
     std_dev_vectors[i] = np.std(rewards[i], axis=0)
 
-np.save("./rewards_data/{}_{}_{}".format(num, structure, "sto" if stochastic else "det"), rewards)
+np.save("./rewards_data/{}_{}_{}_{}".format(number_of_experiments, num, structure, "sto" if stochastic else "det"), rewards)
 
 x_axis = mod_episode * (np.arange(len(mean_vectors[0])))
 plot_rewards(x_axis, mean_vectors, std_dev_vectors, labels,\
-    "Average reward comparison {} {}".format(num, structure), "plots/comparison{}_{}_{}".format(num, structure, "sto" if stochastic else "det"))
+    "Average reward comparison {} {}".format(num, structure), "plots/comparison_{}_{}_{}_{}".format(number_of_experiments, num, structure, "sto" if stochastic else "det"))
 # a = vanilla_q_learning.test()
 # b = causal_q_learning.test()
 # c = partial_causal_q_learning.test()

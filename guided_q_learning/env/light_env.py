@@ -198,7 +198,7 @@ class LightEnv(gym.GoalEnv):
         self.steps = 0
         self.correct = []
         # self.state = np.zeros((self.num))
-        self.state = np.random.randint(2, size=self.num)
+        self.state = np.random.randint(2, size=self.num).astype(float)
         self.eps += 1
         # self.goal = self._sample_goal()
 

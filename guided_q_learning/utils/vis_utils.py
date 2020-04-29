@@ -11,6 +11,6 @@ def plot_rewards(x_axis, mean_vecs, std_dev_vectors, labels, title, filename):
     for i in range(len(mean_vecs)):
         plt.plot(x_axis, mean_vecs[i], label=labels[i])
         # plt.fill_between(x_axis, mean_vecs[i] - std_dev_vectors[i], mean_vecs[i] + std_dev_vectors[i],\
-                        # alpha=0.2)
+        #                 alpha=0.2)
     plt.legend(loc='best')
     plt.savefig("{}.png".format(filename))
