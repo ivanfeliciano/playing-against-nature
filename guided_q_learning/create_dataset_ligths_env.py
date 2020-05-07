@@ -23,3 +23,4 @@ if __name__ == "__main__":
             img = sim.render(width=32, height=32, camera_name="birdview")
             im_rgb = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             cv2.imwrite("./data/{}/{}.png".format(i, "".join([str(_) for _ in config])), im_rgb)
+
