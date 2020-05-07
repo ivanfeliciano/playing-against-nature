@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import networkx as nx
 from pgmpy.models import BayesianModel
@@ -23,12 +24,18 @@ class BaseModel(object):
 		self.digraph = None
 		self.pgmodel = None
 		self.infer_system = None
+		self.ebunch = None
+		self.variables_dict = dict()
 		with open(config_file_path) as json_file:
 			data = json.load(json_file)
-		self.init_graph(data['digraph'])
-		self.init_model(data['digraph'], data['cpdtables'])
-		self.targets = data['targets']
+		self.ebunch = data['digraph']
+		self.pgmodel = BayesianModel(self.ebunch)
+		self.init_graph(self.ebunch)
+		if data.get('cpdtables'):
+			self.init_model(self.ebunch, data['cpdtables'])
+		self.target = data['target']
 		self.nature_variables = data['nature_variables']
+		self.intervention_variables = data['interventions']
 	def init_graph(self, ebunch, plot=False, graph_id='dag'):
 		"""
 		Creo el DAG con DiGraph de la biblioteca networkx usando
@@ -55,8 +62,10 @@ class BaseModel(object):
 			usando matplotlib.
 			graph_id (str): el nombre para identificar el grafo. 
 		"""
-		self.pgmodel = BayesianModel(ebunch)
+		logging.info("Creating CPDs")
 		for cpdtable in cpdtables:
+			self.variables_dict[cpdtable['variable']] = [\
+				_ for _ in range(cpdtable['variable_card'])]
 			cpdtable = TabularCPD(variable=cpdtable['variable'],\
 						variable_card=cpdtable['variable_card'],\
 						values=cpdtable['values'],\
@@ -67,11 +76,25 @@ class BaseModel(object):
 			raise ValueError("Error with CPDTs")
 		self.infer_system = VariableElimination(self.pgmodel)
 		if plot: self.save_pgm_as_img(pgm_id)
+	def get_variable_values(self, variable):
+		return self.variables_dict.get(variable)
+	def get_target_variable(self):
+		"""
+		Regresa una lista con las variables objetivo.
+		"""
+		return self.target
+	def get_intervention_variables(self):
+		"""
+		Regresa una lista con las variables intervenibles.
+		"""
+		return self.intervention_variables
 	def get_nature_variables(self):
 		"""
 		Regresa una lista con las variables que la naturaleza mueve.
 		"""
 		return self.nature_variables
+	def get_ebunch(self):
+		return self.ebunch
 	def get_nature_var_prob(self, nature_variable):
 		"""
 		Regresa una lista con las probabilidades de los valores
@@ -82,6 +105,9 @@ class BaseModel(object):
 		"""
 		if nature_variable in self.nature_variables:
 			return np.squeeze(self.pgmodel.get_cpds(nature_variable).get_values())
+	def conditional_probability(self, variable, evidence):
+		return self.infer_system.query([variable], \
+			evidence=evidence)
 	def make_inference(self, variable, evidence):
 		"""
 		Ejecuta el motor de inferencia para obtener el valor de una variable

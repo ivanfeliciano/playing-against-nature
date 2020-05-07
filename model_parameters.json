@@ -57,10 +57,11 @@
       ]
     }
   ],
-  "targets":[
-    "Final"
-  ],
+  "target": "Final",
   "nature_variables": [
     "Enfermedad"
+  ],
+  "interventions" : [
+    "Tratamiento"
   ]
 }
