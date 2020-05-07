@@ -11,15 +11,13 @@ from pgmpy.inference import VariableElimination
 from scipy.stats import beta, dirichlet
 import matplotlib.pyplot as plt
 
-from true_causal_model import TrueCausalModel
-from model import BaseModel
 
 class CausalAgent(object):
-	def __init__(self, pgmodel):
+	def __init__(self, pgmodel, nature):
 		self.beliefs = dict()
 		self.rewards_per_round = []
 		self.n_rounds = 0
-		self.nature = TrueCausalModel(pgmodel)
+		self.nature = nature
 		self.model = deepcopy(pgmodel)
 	def do_calculus(self, target, intervened_variables):
 		"""
@@ -54,12 +52,16 @@ class CausalAgent(object):
 		return best_actions
 	def training(self, rounds, target_value):
 		raise NotImplementedError
+
+class FullyInformedAgent(CausalAgent):
+	pass
+
 class HalfBlindAgent(CausalAgent):
 	"""
 	Un objeto de esta clase simula a un agente que tiene información parcial del 
 	"""
-	def __init__(self, pgmodel):
-		super().__init__(pgmodel)
+	def __init__(self, pgmodel, nature):
+		super().__init__(pgmodel, nature)
 		self.alpha_params = dict()
 		self.counting_params = dict()
 		self.init_alpha_and_beliefs()
@@ -77,20 +79,6 @@ class HalfBlindAgent(CausalAgent):
 				"parent1_0, ... , parentn_1" : float
 			}
 		}
-
-		Para los contadores tenemos lo mismo pero con los respectivos valores de cada variable:
-
-		{
-			"variable_vi" : {
-				"has_parents" : boolean,
-				"parent1_0, ... , parentn_1" : int
-			},
-			"variable_vj" : {
-				"has_parents" : boolean,
-				"parent1_0, ... , parentn_1" : int
-			}
-		}
-
 		"""
 		logging.info("Initializing alpha parameters")
 		adj_list = self.model.get_nodes_and_predecessors()
@@ -207,11 +195,14 @@ class HalfBlindAgent(CausalAgent):
 		return self.rewards_per_round
 
 def main():
-	logging.basicConfig(filename='causalAgent.log', filemode='w', level=logging.INFO)
-	model = BaseModel('model_parameters.json')
+	from true_causal_model import TrueCausalModel
+	from model import BaseModel
+	logging.basicConfig(filename='logs/causalAgent.log', filemode='w', level=logging.INFO)
+	model = BaseModel('configs/model_parameters.json')
+	nature = TrueCausalModel(model)
 	rounds = 100
 	target_value = 1
-	test_half_blind_agent = HalfBlindAgent(model)
+	test_half_blind_agent = HalfBlindAgent(model, nature)
 	test_half_blind_agent.training(rounds, target_value)
 if __name__ == '__main__':
 	main()
