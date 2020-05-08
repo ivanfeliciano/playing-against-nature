@@ -60,3 +60,48 @@ El programa `experiments.py` ejecuta los cuatro algoritmos y produce una gráfic
 
     python experiments.py --experiments # de experimentos --rounds # de rondas por experimento --target-value el valor que se busca tome la variable objetivo --config-file ruta del archivo con la configuración del modelo --log-file nombre del archivo para logs
 
+## Ejemplo de una ejecución
+
+Supongamos un modelo causal con las siguientes variables:
+
+* Tratamiento
+* Reacción
+* Enfermedad
+* Final
+
+Con la estructura causal:
+
+![Causal Structure](./figures/dag.png)
+
+Y con los siguientes parámetros:
+
+| Enfermedad 0 | 0.7 |
+|--------------|-----|
+| Enfermedad 1 | 0.3 |
+
+
+| Tratamiento 0 | 0.5 |
+|---------------|-----|
+| Tratamiento 1 | 0.5 |
+
+
+| Tratamiento | Tratamiento 0 | Tratamiento 1 |
+|-------------|---------------|---------------|
+| Reacción 0  | 0.7           | 0.4           |
+| Reacción 1  | 0.3           | 0.6           |
+
+
+| Enfermedad  | Enfermedad 0  | Enfermedad 0  | Enfermedad 0  | Enfermedad 0  | Enfermedad 1  | Enfermedad 1  | Enfermedad 1  | Enfermedad 1  |
+|-------------|---------------|---------------|---------------|---------------|---------------|---------------|---------------|---------------|
+| Reacción    | Reacción 0    | Reacción 0    | Reacción 0    | Reacción 0    | Reacción 1    | Reacción 1    | Reacción 1    | Reacción 1    |
+| Tratamiento | Tratamiento 0 | Tratamiento 0 | Tratamiento 0 | Tratamiento 0 | Tratamiento 1 | Tratamiento 1 | Tratamiento 1 | Tratamiento 1 |
+| Final 0     | 0.6           | 0             | 0.8           | 0             | 0.4           | 0             | 0.9           | 0             |
+| Final 1     | 0.4           | 1             | 0.2           | 1             | 0.6           | 1             | 0.1           | 1             |
+
+Ejecutando 20 experimentos con 50 rondas cada uno y donde nos interesa que la variable Final tome el valor 1 tenemo 
+
+    python experiments.py --experiments 20 --rounds 50 --target-value 1
+
+Los resultados obtenidos de la recomensa acumulada promedio son
+
+![Reward comparison](./figures/comparison_20experiments_50rounds.png)

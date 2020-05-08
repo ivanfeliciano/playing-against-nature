@@ -36,7 +36,7 @@ class BaseModel(object):
 		self.target = data['target']
 		self.nature_variables = data['nature_variables']
 		self.intervention_variables = data['interventions']
-	def init_graph(self, ebunch, plot=False, graph_id='dag'):
+	def init_graph(self, ebunch, plot=True, graph_id='figures/dag'):
 		"""
 		Creo el DAG con DiGraph de la biblioteca networkx usando
 		una lista de aristas.
