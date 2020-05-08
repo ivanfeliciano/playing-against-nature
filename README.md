@@ -93,8 +93,8 @@ Y con los siguientes parámetros:
 
 | Enfermedad  | Enfermedad 0  | Enfermedad 0  | Enfermedad 0  | Enfermedad 0  | Enfermedad 1  | Enfermedad 1  | Enfermedad 1  | Enfermedad 1  |
 |-------------|---------------|---------------|---------------|---------------|---------------|---------------|---------------|---------------|
-| Reacción    | Reacción 0    | Reacción 0    | Reacción 0    | Reacción 0    | Reacción 1    | Reacción 1    | Reacción 1    | Reacción 1    |
-| Tratamiento | Tratamiento 0 | Tratamiento 0 | Tratamiento 0 | Tratamiento 0 | Tratamiento 1 | Tratamiento 1 | Tratamiento 1 | Tratamiento 1 |
+| Reacción    | Reacción 0    | Reacción 0    | Reacción 1    | Reacción 1    | Reacción 0    | Reacción 0    | Reacción 1    | Reacción 1    |
+| Tratamiento | Tratamiento 0 | Tratamiento 1 | Tratamiento 0 | Tratamiento 1 | Tratamiento 0 | Tratamiento 1 | Tratamiento 0 | Tratamiento 1 |
 | Final 0     | 0.6           | 0             | 0.8           | 0             | 0.4           | 0             | 0.9           | 0             |
 | Final 1     | 0.4           | 1             | 0.2           | 1             | 0.6           | 1             | 0.1           | 1             |
 
