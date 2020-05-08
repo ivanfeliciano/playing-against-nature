@@ -11,13 +11,12 @@ from pgmpy.inference import VariableElimination
 from scipy.stats import beta, dirichlet
 import matplotlib.pyplot as plt
 
+from agents.core import Agent
 
-class CausalAgent(object):
-	def __init__(self, pgmodel, nature):
+class CausalAgent(Agent):
+	def __init__(self, nature, pgmodel):
+		super().__init__(nature)
 		self.beliefs = dict()
-		self.rewards_per_round = []
-		self.n_rounds = 0
-		self.nature = nature
 		self.model = deepcopy(pgmodel)
 	def do_calculus(self, target, intervened_variables):
 		"""
@@ -54,14 +53,27 @@ class CausalAgent(object):
 		raise NotImplementedError
 
 class FullyInformedAgent(CausalAgent):
-	pass
+	def training(self, rounds, target_value):
+		intervention_vars = self.model.get_intervention_variables()
+		target = {
+			"variable": self.model.get_target_variable(),
+			"value" : target_value
+			}
+		for i in range(rounds):
+			best_actions = self.make_decision(target, intervention_vars)
+			logging.info("Best actions {} {}".format(intervention_vars, best_actions))
+			nature_response = self.nature.action_simulator(intervention_vars, \
+								best_actions)
+			logging.info(nature_response)
+			self.rewards_per_round.append(nature_response[target["variable"]])
+		return self.rewards_per_round	
 
 class HalfBlindAgent(CausalAgent):
 	"""
 	Un objeto de esta clase simula a un agente que tiene información parcial del 
 	"""
-	def __init__(self, pgmodel, nature):
-		super().__init__(pgmodel, nature)
+	def __init__(self, nature, pgmodel):
+		super().__init__(nature, pgmodel)
 		self.alpha_params = dict()
 		self.counting_params = dict()
 		self.init_alpha_and_beliefs()
@@ -202,7 +214,10 @@ def main():
 	nature = TrueCausalModel(model)
 	rounds = 100
 	target_value = 1
-	test_half_blind_agent = HalfBlindAgent(model, nature)
-	test_half_blind_agent.training(rounds, target_value)
+	half_blind_agent = HalfBlindAgent(model, nature)
+	half_blind_agent.training(rounds, target_value)
+	logging.info("FULL AGENT")
+	full_agent = FullyInformedAgent(model, nature)
+	full_agent.training(rounds, target_value)
 if __name__ == '__main__':
 	main()

@@ -107,7 +107,7 @@ class BaseModel(object):
 			return np.squeeze(self.pgmodel.get_cpds(nature_variable).get_values())
 	def conditional_probability(self, variable, evidence):
 		return self.infer_system.query([variable], \
-			evidence=evidence)
+			evidence=evidence, show_progress=False)
 	def make_inference(self, variable, evidence):
 		"""
 		Ejecuta el motor de inferencia para obtener el valor de una variable
@@ -118,7 +118,7 @@ class BaseModel(object):
 			evidence (dict) : un diccionario con la evidencia de otras variables de la forma {variable :  value}.
 		"""
 		return self.infer_system.map_query([variable],\
-			evidence=evidence)[variable]
+                                     evidence=evidence, show_progress=False)[variable]
 	def save_digraph_as_img(self, filename):
 		"""
 		Método auxiliar para guardar el DAG de networkx como imagen.

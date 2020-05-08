@@ -21,6 +21,8 @@ class TrueCausalModel:
 			chosen_actions (list): lista de las variables de accción a las que se les asignan
 			valores.
 			values_chosen_actions (list): lista de los valores que se asignan a las variables de acción.
+		
+		to-do tal vez sería mejor recibir como parámetro un diccionario
 		"""
 		response = dict()
 		elements = None
