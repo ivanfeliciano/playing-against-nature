@@ -36,7 +36,7 @@ class BaseModel(object):
 		self.target = data['target']
 		self.nature_variables = data['nature_variables']
 		self.intervention_variables = data['interventions']
-	def init_graph(self, ebunch, plot=True, graph_id='figures/dag'):
+	def init_graph(self, ebunch, plot=False, graph_id='figures/dag'):
 		"""
 		Creo el DAG con DiGraph de la biblioteca networkx usando
 		una lista de aristas.
@@ -66,16 +66,23 @@ class BaseModel(object):
 		for cpdtable in cpdtables:
 			self.variables_dict[cpdtable['variable']] = [\
 				_ for _ in range(cpdtable['variable_card'])]
-			cpdtable = TabularCPD(variable=cpdtable['variable'],\
+			table = TabularCPD(variable=cpdtable['variable'],\
 						variable_card=cpdtable['variable_card'],\
 						values=cpdtable['values'],\
 						evidence_card=cpdtable.get('evidence_card'),\
 						evidence=cpdtable.get('evidence'))
-			self.pgmodel.add_cpds(cpdtable)
+			if cpdtable.get('evidence'):
+				table.reorder_parents(sorted(cpdtable.get('evidence')))
+			logging.info(table)
+			self.pgmodel.add_cpds(table)
 		if not self.pgmodel.check_model():
 			raise ValueError("Error with CPDTs")
-		self.infer_system = VariableElimination(self.pgmodel)
+		# self.infer_system = VariableElimination(self.pgmodel)
+		self.update_infer_system()
 		if plot: self.save_pgm_as_img(pgm_id)
+	def update_infer_system(self):
+		self.infer_system = VariableElimination(self.pgmodel)
+
 	def get_variable_values(self, variable):
 		return self.variables_dict.get(variable)
 	def get_target_variable(self):
@@ -125,13 +132,15 @@ class BaseModel(object):
 		"""
 		nx.draw(self.digraph, with_labels=True)
 		plt.savefig(filename)
+		plt.show()
 		plt.clf()
 	def save_pgm_as_img(self, filename):
 		"""
 		Método auxiliar para guardar el DAG del pgmpy como imagen.
 		"""
 		nx.draw(self.digraph, with_labels=True)
-		plt.savefig(filename)
+		plt.show()
+		# plt.savefig(filename)
 		plt.clf()
 	def get_graph_toposort(self):
 		"""
@@ -152,6 +161,19 @@ class BaseModel(object):
 		una variable y tal vez hasta los valores correspondientes
 		"""
 		pass
+	def get_joint_prob_observation(self, observation):
+		prob = self.infer_system.query(variables=list(observation.keys()), joint=True)
+		print(prob)
+		variables = prob.variables
+		values = prob.values 
+		for i in range(len(variables)):
+			value = observation[variables[i]]
+			values = values[value]
+		return values
+
+
+def UnknownStructureModel(BaseModel):
+	pass
 def main():
 	test_model = BaseModel('model_parameters.json')
 	# for cpdt in test_model.pgmodel.get_cpds():

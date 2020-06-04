@@ -75,7 +75,6 @@ class HalfBlindAgent(CausalAgent):
 	def __init__(self, nature, pgmodel):
 		super().__init__(nature, pgmodel)
 		self.alpha_params = dict()
-		self.counting_params = dict()
 		self.init_alpha_and_beliefs()
 
 	def init_alpha_and_beliefs(self):
@@ -164,9 +163,9 @@ class HalfBlindAgent(CausalAgent):
 			self.model.pgmodel.add_cpds(cpd_table)
 		if self.model.pgmodel.check_model():
 			self.model.infer_system = VariableElimination(self.model.pgmodel)
-			logging.info("PGMPY CPTs")
-			for cpd in self.model.pgmodel.get_cpds():
-				logging.info(cpd)
+			# logging.info("PGMPY CPTs")
+			# for cpd in self.model.pgmodel.get_cpds():
+			# 	logging.info(cpd)
 		else:
 			for cpd in backup_model.get_cpds():
 				logging.info(cpd)
@@ -187,8 +186,8 @@ class HalfBlindAgent(CausalAgent):
 			parents_to_string = parents_to_string.strip()
 			self.alpha_params[node][parents_to_string][node_value] += 1
 
-		logging.info("ALPHAS after counting update")
-		logging.info(json.dumps(self.alpha_params, indent=2))
+		# logging.info("ALPHAS after counting update")
+		# logging.info(json.dumps(self.alpha_params, indent=2))
 	def training(self, rounds, target_value):
 		intervention_vars = self.model.get_intervention_variables()
 		target = {
@@ -197,14 +196,20 @@ class HalfBlindAgent(CausalAgent):
 			}
 		for i in range(rounds):
 			best_actions = self.make_decision(target, intervention_vars)
-			logging.info("Best actions {} {}".format(intervention_vars, best_actions))
+			# logging.info("Best actions {} {}".format(intervention_vars, best_actions))
 			nature_response = self.nature.action_simulator(intervention_vars, \
 								best_actions)
-			logging.info(nature_response)
+			# logging.info(nature_response)
 			self.rewards_per_round.append(nature_response[target["variable"]])
 			self.update_beliefs(nature_response)
 			self.update_cpts_causal_model()
+		for table in self.model.pgmodel.get_cpds():
+			logging.info(table.values)
+			logging.info(table.values.shape)
+			logging.info(np.squeeze(table.values))
 		return self.rewards_per_round
+	def get_cpdts(self):
+		return self.model.pgmodel.get_cpds()
 
 def main():
 	from true_causal_model import TrueCausalModel
@@ -214,10 +219,14 @@ def main():
 	nature = TrueCausalModel(model)
 	rounds = 100
 	target_value = 1
-	half_blind_agent = HalfBlindAgent(model, nature)
+	half_blind_agent = HalfBlindAgent(nature, model)
 	half_blind_agent.training(rounds, target_value)
-	logging.info("FULL AGENT")
-	full_agent = FullyInformedAgent(model, nature)
-	full_agent.training(rounds, target_value)
+	# logging.info("FULL AGENT")
+	# full_agent = FullyInformedAgent(nature, model)
+	# full_agent.training(rounds, target_value)
+
+class BlindAgent(CausalAgent):
+	pass
+	
 if __name__ == '__main__':
 	main()

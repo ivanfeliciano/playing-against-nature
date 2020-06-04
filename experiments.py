@@ -60,7 +60,7 @@ def main():
     names = ["Qlearning", "HalfBlindAgent", "FullyInformedAgent", "Random"]
     agents = [QLearning, HalfBlindAgent, FullyInformedAgent, RandomAgent]
     measures = [None, None, None, None]
-    for i in range(4):
+    for i in range(len(agents)):
         measures[i] = run_experiments(n_experiments, rounds, agents[i],\
             nature, model, names[i], target_value)
     vis_utils.plot_rewards_comparison(
