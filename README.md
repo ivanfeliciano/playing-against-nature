@@ -105,3 +105,14 @@ Ejecutando 20 experimentos con 50 rondas cada uno y donde nos interesa que la va
 Los resultados obtenidos de la recomensa acumulada promedio son
 
 ![Reward comparison](./figures/comparison_20experiments_50rounds.png)
+
+
+## Cosas por hacer
+
++ Usar el modelo aproximado para ver que tan consistentes
+son las observacione con lo que estoy aprendiendo
+
++ Generar las tablas aleatorias
++ Iterar para ver si converge
++ Meter al trabajo de los switches
++ Conteo de las veces que veo cosas
