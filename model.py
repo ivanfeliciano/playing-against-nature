@@ -130,7 +130,8 @@ class BaseModel(object):
 		"""
 		Método auxiliar para guardar el DAG de networkx como imagen.
 		"""
-		nx.draw(self.digraph, with_labels=True)
+		pos = nx.circular_layout(self.digraph)
+		nx.draw(self.digraph, with_labels=True, pos=pos)
 		plt.savefig(filename)
 		plt.show()
 		plt.clf()
@@ -163,7 +164,7 @@ class BaseModel(object):
 		pass
 	def get_joint_prob_observation(self, observation):
 		prob = self.infer_system.query(variables=list(observation.keys()), joint=True)
-		print(prob)
+		# print(prob)
 		variables = prob.variables
 		values = prob.values 
 		for i in range(len(variables)):

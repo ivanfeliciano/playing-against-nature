@@ -211,6 +211,25 @@ class HalfBlindAgent(CausalAgent):
 	def get_cpdts(self):
 		return self.model.pgmodel.get_cpds()
 
+class BlindAgent(HalfBlindAgent):
+	def __init__(self, nature, pgmodel, connection_beliefs):
+		super().__init__(nature, pgmodel)
+		self.alpha_params = dict()
+		self.init_alpha_and_beliefs()
+		self.connection_beliefs = connection_beliefs
+	def update_connection_beliefs(self):
+		for pair in self.connection_beliefs:
+			prob_connection = connection_tables[pair][0]
+			var_one = pair.split("->")[0]
+			var_two = pair.split("->")[1]
+			print("+-----------------------------------+")
+			print("P({0} -> {1}) = {2:.3f}".format(var_one, var_two, prob_connection))
+			print("P({0} -> {1}) = {2:.3f}".format(var_two, var_one, 1 - prob_connection))
+			print("+-----------------------------------+")
+"""
++ cómo checar que no haya ciclos
++ las tablas de probabilidad condicional como se actualizan
+"""
 def main():
 	from true_causal_model import TrueCausalModel
 	from model import BaseModel
@@ -225,8 +244,7 @@ def main():
 	# full_agent = FullyInformedAgent(nature, model)
 	# full_agent.training(rounds, target_value)
 
-class BlindAgent(CausalAgent):
-	pass
+
 	
 if __name__ == '__main__':
 	main()
