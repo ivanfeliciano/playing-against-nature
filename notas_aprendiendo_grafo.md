@@ -78,11 +78,17 @@
 | Tratamiento(1) | Reaccion(1) | Final(1) |                            0.3000 |
 
 ### Regla de actualización
+
 t<sub>1</sub>
+
 P<sub>Enfermedad->Final</sub> = (0.95 * 0.21) / (0.21 + 0.3) = 0.40
+
 t<sub>2</sub>
+
 P<sub>Enfermedad->Final</sub> = 0.104
+
 .
 .
 .
+
 P<sub>Enfermedad->Final</sub> = 0
