@@ -1,5 +1,9 @@
+import logging
+
 import numpy as np
+
 from model import BaseModel
+
 
 class TrueCausalModel:
 	"""
@@ -44,11 +48,12 @@ class TrueCausalModel:
 		return response
 
 def main():
-	model = BaseModel('model_parameters.json')
-	tcm = TrueCausalModel(model)
-	r = tcm.action_simulator(['Tratamiento'], [1])
-	print(r)
-	r = tcm.action_simulator(['Tratamiento'], [0])
-	print(r)
+	logging.basicConfig(filename="logs/test_nature.log", filemode='w', level=logging.INFO)
+	model = BaseModel('configs/model_parameters.json')
+	# tcm = TrueCausalModel(model)
+	# r = tcm.action_simulator(['Tratamiento'], [1])
+	# print(r)
+	# r = tcm.action_simulator(['Tratamiento'], [0])
+	# print(r)
 if __name__ == '__main__':
 	main()
