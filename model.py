@@ -19,7 +19,7 @@ class BaseModel(object):
 
 	to-do : por ahora sólo funciona con valores binarias. 
 	"""
-	def __init__(self, config_file_path):
+	def __init__(self, config_file_path=None):
 		self.config_file_path = config_file_path
 		self.digraph = None
 		self.pgmodel = None
@@ -28,15 +28,18 @@ class BaseModel(object):
 		self.variables_dict = dict()
 		with open(config_file_path) as json_file:
 			data = json.load(json_file)
-		self.ebunch = data['digraph']
-		self.pgmodel = BayesianModel(self.ebunch)
-		self.init_graph(self.ebunch)
+		if data.get('digraph'):
+			self.ebunch = data['digraph']
+			self.pgmodel = BayesianModel(self.ebunch)
+			self.init_graph(self.ebunch)
 		if data.get('cpdtables'):
 			self.init_model(self.ebunch, data['cpdtables'])
+			for table in self.pgmodel.get_cpds():
+				logging.info(table)
 		self.target = data['target']
 		self.nature_variables = data['nature_variables']
 		self.intervention_variables = data['interventions']
-	def init_graph(self, ebunch, plot=False, graph_id='figures/dag'):
+	def init_graph(self, ebunch, nodes=[], plot=False, graph_id='figures/dag'):
 		"""
 		Creo el DAG con DiGraph de la biblioteca networkx usando
 		una lista de aristas.
@@ -48,7 +51,22 @@ class BaseModel(object):
 			graph_id (str): el nombre para identificar el grafo. 
 		"""
 		self.digraph =  nx.DiGraph(ebunch)
+		for node in nodes:
+			self.digraph.add_node(node)
 		if plot: self.save_digraph_as_img(graph_id)
+	def reset(self, pgmodel, ebunch, nodes=[]):
+		self.init_graph(ebunch, nodes=nodes, plot=False)
+		for variable in pgmodel.nodes():
+			self.variables_dict[variable] = [0, 1]
+		self.ebunch = ebunch
+		self.pgmodel = pgmodel
+		self.update_infer_system()
+
+	def show_graph(self):
+		pos = nx.circular_layout(self.digraph)
+		nx.draw(self.digraph, with_labels=True, pos=pos)
+		plt.show()
+		plt.clf()
 	def init_model(self, ebunch, cpdtables, plot=False, pgm_id='pgm'):
 		"""
 		Creo el PGM usando PGMPY. Por ahora es un modelo Bayesiano. Recibe 
@@ -163,8 +181,7 @@ class BaseModel(object):
 		"""
 		pass
 	def get_joint_prob_observation(self, observation):
-		prob = self.infer_system.query(variables=list(observation.keys()), joint=True)
-		# print(prob)
+		prob = self.infer_system.query(variables=list(observation.keys()), joint=True, show_progress=False)
 		variables = prob.variables
 		values = prob.values 
 		for i in range(len(variables)):
