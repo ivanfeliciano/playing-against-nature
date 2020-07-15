@@ -116,3 +116,40 @@ son las observacione con lo que estoy aprendiendo
 + Iterar para ver si converge
 + Meter al trabajo de los switches
 + Conteo de las veces que veo cosas
+
+
+# Algoritmo de aprendizaje de la estructura
+
+**Entrada**: Un número *L* de pasos de exploración,orden causal de las variables, lista de aristas inválidas *I*, naturaleza *N*, variable objetivo *Y*, valor deseado de la variable objetivo *y*, variable de intervención *X*, número de rondas de actualización *rounds*.
+
+1. Explorar *L* veces el ambiente actuando sobre las variables de intervención *X* y observar respuestas de la naturaleza. Guardar las observaciones en *O*, |*O*| = *L*.
+
+2. Crear e inicializar tabla de creencias *P*, respetando el orden causal y las aristas inválidas *I*. Cada creencia *p<sub>ij</sub>* denota la probabilidad de conexión entre la variable i y j.
+
+3. Generar un grafo *G* a partir de las creencias *P*.
+
+<!-- 5. Crear modelo *M* con grafo *G* y con parámetros aprendidos a partir de los datos en *O*. -->
+
+4. Para 1, ..., *rounds*:
+	+ Crear agente *A* cuya única información es *G*.
+	+ El agente *A* toma la decisión de acuerdo con el grafo *G* y con sus creencias.
+	+ *N* responde a la acción y envía observación *o = <x<sub>i</sub>, ..., y>*.
+	+ Añadir *o* al búfer de observaciones *O*.
+	+ Actualizar creencias *P*.
+		+ Para cada p<sub>ij</sub> en *P*
+			+ Si la arista <i, j> está en *G*:
+				+ Crear modelo *M<sub>ij</sub>* a partir de *G* y aprender parámetros usando *O*.
+				+ Crear modelo *M<sub>~ij</sub>* a partir de *G - <i,j>* y aprender parámetros usando *O*.
+			+ Si la arista <i, j> no está en *G*:
+				+ Crear modelo *M<sub>ij</sub>* a partir de *G + <i,j>* y aprender parámetros usando *O*.
+				+ Crear modelo *M<sub>~ij</sub>* a partir de *G* y aprender parámetros usando *O*.
+			+ Calcular probabilidad de la observación *o* en el modelo con la arista i->j:  
+				+ *p'<sub>ij</sub>* <- *P(o|M<sub>ij</sub>)*
+			+ Calcular probabilidad de la observación *o* en el modelo sin la arista i->j:  
+				+ *p'<sub>~ij</sub>* <- *P(o|M<sub>~ij</sub>)*
+			+ Actualizar conexión *p<sub>ij</sub>*:
+				+ p<sub>ij</sub>* <- (*p<sub>ij</sub>* * *p'<sub>ij</sub>*) / (*p<sub>ij</sub>* * *p'<sub>ij</sub>* + *(1 - p<sub>ij</sub>)* * *p'<sub>~ij</sub>*)
+	+ Generar un grafo *G* a partir de las creencias actualizadas *P*.
+
+			
+		
