@@ -107,17 +107,6 @@ Los resultados obtenidos de la recomensa acumulada promedio son
 ![Reward comparison](./figures/comparison_20experiments_50rounds.png)
 
 
-## Cosas por hacer
-
-+ Usar el modelo aproximado para ver que tan consistentes
-son las observacione con lo que estoy aprendiendo
-
-+ Generar las tablas aleatorias
-+ Iterar para ver si converge
-+ Meter al trabajo de los switches
-+ Conteo de las veces que veo cosas
-
-
 # Algoritmo de aprendizaje de la estructura
 
 **Entrada**: Un número *L* de pasos de exploración,orden causal de las variables, lista de aristas inválidas *I*, naturaleza *N*, variable objetivo *Y*, valor deseado de la variable objetivo *y*, variable de intervención *X*, número de rondas de actualización *rounds*.
@@ -153,3 +142,10 @@ son las observacione con lo que estoy aprendiendo
 
 			
 		
+# Cosas por hacer
+
++ Meter al trabajo de los switches
++ Razones por las que puede pasar lo de los casos extraños:
+	+ El número de observaciones en la exploración.
+	+ Es posible que aunque las tablas de probabilidad condicional sean diferentes para dos modelos, la tabla de probabilidad conjunta sea la misma o coincidan en algunos valores para diferentes observaciones.
++ Crear función para graficar diferentes experimentos y sus desviaciones estándar.

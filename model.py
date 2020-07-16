@@ -182,6 +182,7 @@ class BaseModel(object):
 		pass
 	def get_joint_prob_observation(self, observation):
 		prob = self.infer_system.query(variables=list(observation.keys()), joint=True, show_progress=False)
+		# print(prob)
 		variables = prob.variables
 		values = prob.values 
 		for i in range(len(variables)):
