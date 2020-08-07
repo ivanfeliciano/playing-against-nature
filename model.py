@@ -19,19 +19,23 @@ class BaseModel(object):
 
 	to-do : por ahora sólo funciona con valores binarias. 
 	"""
-	def __init__(self, config_file_path=None):
+	def __init__(self, config_file_path=None, data=None):
 		self.config_file_path = config_file_path
 		self.digraph = None
 		self.pgmodel = None
 		self.infer_system = None
 		self.ebunch = None
 		self.variables_dict = dict()
-		with open(config_file_path) as json_file:
-			data = json.load(json_file)
+		if config_file_path:
+			with open(config_file_path) as json_file:
+				data = json.load(json_file)
 		if data.get('digraph'):
 			self.ebunch = data['digraph']
 			self.pgmodel = BayesianModel(self.ebunch)
-			self.init_graph(self.ebunch)
+			nodes = data.get('nodes', [])
+			if nodes:
+				self.pgmodel.add_nodes_from(nodes)
+			self.init_graph(ebunch=self.ebunch, nodes=nodes)
 		if data.get('cpdtables'):
 			self.init_model(self.ebunch, data['cpdtables'])
 			for table in self.pgmodel.get_cpds():
@@ -39,7 +43,7 @@ class BaseModel(object):
 		self.target = data['target']
 		self.nature_variables = data['nature_variables']
 		self.intervention_variables = data['interventions']
-	def init_graph(self, ebunch, nodes=[], plot=False, graph_id='figures/dag'):
+	def init_graph(self, ebunch, nodes=[], plot=True, graph_id='figures/dag'):
 		"""
 		Creo el DAG con DiGraph de la biblioteca networkx usando
 		una lista de aristas.
@@ -91,7 +95,7 @@ class BaseModel(object):
 						evidence=cpdtable.get('evidence'))
 			if cpdtable.get('evidence'):
 				table.reorder_parents(sorted(cpdtable.get('evidence')))
-			logging.info(table)
+			# logging.info(table)
 			self.pgmodel.add_cpds(table)
 		if not self.pgmodel.check_model():
 			raise ValueError("Error with CPDTs")
@@ -190,9 +194,6 @@ class BaseModel(object):
 			values = values[value]
 		return values
 
-
-def UnknownStructureModel(BaseModel):
-	pass
 def main():
 	test_model = BaseModel('model_parameters.json')
 	# for cpdt in test_model.pgmodel.get_cpds():

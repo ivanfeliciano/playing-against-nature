@@ -18,7 +18,7 @@ import pandas as pd
 from model import BaseModel
 from true_causal_model import TrueCausalModel
 from agents.causal_agents import HalfBlindAgent
-
+from utils.vis_utils import plot_measures
 np.random.seed(0)
 
 
@@ -194,6 +194,7 @@ def training(variables, rounds, agent, target, adj_list, connection_tables, data
 		print("*" * 50)
 	return connection_probas
 
+
 def main():
 	DG = nx.DiGraph([("Reaccion", "Final"), ("Tratamiento", "Reaccion"), ("Tratamiento", "Final"), ("Enfermedad", "Final")])
 	causal_order = list(nx.topological_sort(DG))
@@ -209,23 +210,40 @@ def main():
 		"variable": COMPLETE_MODEL.get_target_variable(),
 		"value" : target_value
 	}
-	rounds = 2
 
-	data = explore_and_generate_data(nature, intervention_vars, n_steps=100)
-	df = pd.DataFrame.from_dict(data)
-	connection_tables = create_pij(variables, causal_order, invalid_edges)
-	adj_list = create_graph_from_beliefs(variables, connection_tables)
-	ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
-	approx_model = generate_approx_model_from_graph(ebunch, nodes, df)
+	experiments = 10
+	global_results = dict()
+	for i in range(experiments):
+		rounds = 200
+		data = explore_and_generate_data(nature, intervention_vars, n_steps=100)
+		df = pd.DataFrame.from_dict(data)
+		connection_tables = create_pij(variables, causal_order, invalid_edges)
+		adj_list = create_graph_from_beliefs(variables, connection_tables)
+		ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
+		approx_model = generate_approx_model_from_graph(ebunch, nodes, df)
 
-	unknown_model = BaseModel('configs/incomplete_params.json')
-	unknown_model.reset(approx_model, ebunch, nodes)
-	unknown_model.show_graph()
-	agent = HalfBlindAgent(nature, unknown_model)
+		unknown_model = BaseModel('configs/incomplete_params.json')
+		unknown_model.reset(approx_model, ebunch, nodes)
+		unknown_model.show_graph()
+		agent = HalfBlindAgent(nature, unknown_model)
 
-	connection_probas = training(variables, rounds, agent, target, adj_list, connection_tables, data, unknown_model, nature)
-	plot_probabilities(connection_probas)
-	print_dict(connection_tables)
+		connection_probas = training(variables, rounds, agent, target, adj_list, connection_tables, data, unknown_model, nature)
+		print_dict(connection_tables)
+		for key in connection_probas:
+			if key not in global_results:
+				global_results[key] = []
+			global_results[key].append(connection_probas[key])
+	labels = []
+	mean_vectors = []
+	std_dev_vectors = []
+	for key in global_results:
+		labels += [key]
+		mean_vectors.append(np.mean(global_results[key], axis=0))
+		std_dev_vectors.append(np.std(global_results[key], axis=0))
+	x_axis = np.arange(len(mean_vectors[0]))
+	plot_measures(x_axis, mean_vectors, std_dev_vectors, labels, "connection_beliefs_exp_{}_rounds_{}_{}".format(experiments, rounds, intervention_vars))
+	for i in range(len(mean_vectors)):
+		plot_measures(x_axis, [mean_vectors[i]], [std_dev_vectors[i]], [labels[i]], "connection_beliefs_{}_exp_{}_rounds_{}_{}".format(labels[i], experiments, rounds, intervention_vars))
 
 if __name__ == '__main__':
 	main()
