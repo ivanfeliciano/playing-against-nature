@@ -76,6 +76,18 @@ def generate_cpdtables_from_aj_list(parents):
     return cpdtables
 
 
+def check_diff_and_get_target_variables(env):
+    num = env.num
+    state = env._get_obs()[:num]
+    goal = env.goal
+    target_vars = []
+    targets_vals = []
+    for i in range(len(state)):
+        if state[i] != goal[i]:
+            target_vars.append("effect_{}".format(i))
+            targets_vals.append(goal[i])
+    return target_vars, targets_vals
+
 if __name__ == "__main__":
     n = 5
     logging.basicConfig(filename='logs/envToModel.log',

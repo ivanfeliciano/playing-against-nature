@@ -33,7 +33,7 @@ class CausalAgent(Agent):
 		targer y múltiples variables intervenidas.
 		"""
 		target_name = target["variable"]
-		target_value = target["value"]
+		target_value = int(target["value"])
 		val_inter_vars = [self.model.get_variable_values(i)\
 							for i in intervened_variables]
 		cartesian_prod = list(itertools.product(*val_inter_vars))
