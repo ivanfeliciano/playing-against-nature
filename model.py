@@ -16,6 +16,10 @@ class BaseModel(object):
 	Args:
 		config_file_path (str) : la ruta al json con la información de
 		DAG y sus tablas de probabilidad condicional. 
+		
+		data (dict) : si no se cuenta con un archivo de configuración
+		se puede utilizar un diccionario con los elementos para inicializar
+		el objeto.
 
 	to-do : por ahora sólo funciona con valores binarias. 
 	"""
@@ -25,6 +29,7 @@ class BaseModel(object):
 		self.pgmodel = None
 		self.infer_system = None
 		self.ebunch = None
+		self.nodes = None
 		self.variables_dict = dict()
 		if config_file_path:
 			with open(config_file_path) as json_file:
@@ -32,10 +37,10 @@ class BaseModel(object):
 		if data.get('digraph'):
 			self.ebunch = data['digraph']
 			self.pgmodel = BayesianModel(self.ebunch)
-			nodes = data.get('nodes', [])
-			if nodes:
-				self.pgmodel.add_nodes_from(nodes)
-			self.init_graph(ebunch=self.ebunch, nodes=nodes)
+			self.nodes = data.get('nodes', [])
+			if self.nodes:
+				self.pgmodel.add_nodes_from(self.nodes)
+			self.init_graph(ebunch=self.ebunch, nodes=self.nodes)
 		if data.get('cpdtables'):
 			self.init_model(self.ebunch, data['cpdtables'])
 			for table in self.pgmodel.get_cpds():
@@ -59,14 +64,24 @@ class BaseModel(object):
 			self.digraph.add_node(node)
 		if plot: self.save_digraph_as_img(graph_id)
 	def reset(self, pgmodel, ebunch, nodes=[]):
+		"""
+		Método para cambiar el modelo y el grafo. Además,
+		se actualiza el sistema de inferencia de acuerdo con el nuevo
+		modelo. Este método se utiliza para hacer un modelo dinámico 
+		donde lo único que se mantienen son las variables.
+		"""
 		self.init_graph(ebunch, nodes=nodes, plot=False)
 		for variable in pgmodel.nodes():
 			self.variables_dict[variable] = [0, 1]
 		self.ebunch = ebunch
+		self.nodes = nodes
 		self.pgmodel = pgmodel
 		self.update_infer_system()
 
 	def show_graph(self):
+		"""
+		Usa matplolib para mostrar el grafo causal del modelo.
+		"""
 		pos = nx.circular_layout(self.digraph)
 		nx.draw(self.digraph, with_labels=True, pos=pos)
 		plt.show()
@@ -84,7 +99,6 @@ class BaseModel(object):
 			usando matplotlib.
 			graph_id (str): el nombre para identificar el grafo. 
 		"""
-		logging.info("Creating CPDs")
 		for cpdtable in cpdtables:
 			self.variables_dict[cpdtable['variable']] = [\
 				_ for _ in range(cpdtable['variable_card'])]
@@ -95,17 +109,23 @@ class BaseModel(object):
 						evidence=cpdtable.get('evidence'))
 			if cpdtable.get('evidence'):
 				table.reorder_parents(sorted(cpdtable.get('evidence')))
-			# logging.info(table)
 			self.pgmodel.add_cpds(table)
 		if not self.pgmodel.check_model():
 			raise ValueError("Error with CPDTs")
-		# self.infer_system = VariableElimination(self.pgmodel)
 		self.update_infer_system()
 		if plot: self.save_pgm_as_img(pgm_id)
 	def update_infer_system(self):
+		"""
+		Actualiza el sistema de inferencia para que sea compatible con
+		el pgm. Usa VariableElimination.
+		"""
 		self.infer_system = VariableElimination(self.pgmodel)
 
 	def get_variable_values(self, variable):
+		"""
+		Obtiene una lista de los valores que puede
+		tomar una variable.
+		"""
 		return self.variables_dict.get(variable)
 	def get_target_variable(self):
 		"""
@@ -123,7 +143,16 @@ class BaseModel(object):
 		"""
 		return self.nature_variables
 	def get_ebunch(self):
+		"""
+		Regresa lista de aristas del modelo.
+		"""
 		return self.ebunch
+
+	def get_nodes(self):
+		"""
+		Regresa lista de nodos aislados del modelo.
+		"""
+		return self.nodes
 	def get_nature_var_prob(self, nature_variable):
 		"""
 		Regresa una lista con las probabilidades de los valores
@@ -135,6 +164,11 @@ class BaseModel(object):
 		if nature_variable in self.nature_variables:
 			return np.squeeze(self.pgmodel.get_cpds(nature_variable).get_values())
 	def conditional_probability(self, variable, evidence):
+		"""
+		Calcula la probabilidad de todos los valores de una variable
+		dada la evidencia usando el método de eliminación de 
+		variable.
+		"""
 		return self.infer_system.query([variable], \
 			evidence=evidence, show_progress=False)
 	def make_inference(self, variable, evidence):
@@ -163,7 +197,7 @@ class BaseModel(object):
 		"""
 		nx.draw(self.digraph, with_labels=True)
 		plt.show()
-		# plt.savefig(filename)
+		plt.savefig(filename)
 		plt.clf()
 	def get_graph_toposort(self):
 		"""
@@ -183,12 +217,14 @@ class BaseModel(object):
 		to-do : un método para que me regrese cuantos valores posibles tiene
 		una variable y tal vez hasta los valores correspondientes
 		"""
-		pass
+		return len(self.variables_dict.get(variable, []))
 	def get_joint_prob_observation(self, observation):
+		"""
+		Obtiene la probabilidad de una observación.
+		"""
 		prob = self.infer_system.query(variables=list(observation.keys()), joint=True, show_progress=False)
-		# print(prob)
 		variables = prob.variables
-		values = prob.values 
+		values = prob.values
 		for i in range(len(variables)):
 			value = observation[variables[i]]
 			values = values[value]

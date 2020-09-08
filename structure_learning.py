@@ -16,35 +16,13 @@ import pandas as pd
 
 
 from model import BaseModel
-from true_causal_model import TrueCausalModel
+from true_causal_model import TrueCausalModel, TrueCausalModelEnv
 from agents.causal_agents import HalfBlindAgent
-from utils.vis_utils import plot_measures
+from utils.vis_utils import plot_measures, plot_probabilities
+from env.light_env import LightEnv
+from utils.light_env_utils import *
+from utils.helpers import *
 np.random.seed(0)
-
-
-def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
-	return abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
-
-def print_dict(data):
-	for k in data:
-		print("{} : {}".format(k, data[k]))
-
-def plot_probabilities(connection_probas):
-	for pair in connection_probas:
-		plt.plot(connection_probas[pair], label=pair)
-	plt.legend()
-	plt.show()
-
-
-def is_a_valid_edge(x, y, causal_order, invalid_edges):
-	"""
-	Verifica si un par ordenado (x, y) es una arista válida
-	de acuerdo con el orden causal de las variables y si no
-	es una arista inválida.
-	"""
-	if tuple(sorted((x, y))) in invalid_edges or causal_order.index(y) < causal_order.index(x):
-		return False
-	return True
 
 def create_pij(variables, causal_order, invalid_edges):
 	"""
@@ -56,7 +34,8 @@ def create_pij(variables, causal_order, invalid_edges):
 	"""
 	connection_tables = dict()
 	for pair in itertools.combinations((variables), 2):
-		proba = np.random.rand()
+		# proba = np.random.rand()
+		proba = 0.5
 		if is_a_valid_edge(pair[0], pair[1], causal_order, invalid_edges):
 			connection_tables[(pair[0], pair[1])] = proba
 		elif is_a_valid_edge(pair[1], pair[0], causal_order, invalid_edges):
@@ -65,7 +44,7 @@ def create_pij(variables, causal_order, invalid_edges):
 
 def create_graph_from_beliefs(variables, connection_tables):
 	"""
-	Retorna una gráfica de adyacencia a partir de la creencias
+	Retorna una lista de adyacencia a partir de la creencias
 	de conexión.
 	"""
 	adj_list = dict()
@@ -78,6 +57,10 @@ def create_graph_from_beliefs(variables, connection_tables):
 	return adj_list
 
 def adj_list_to_ebunch_and_nodes(adj_list):
+	"""
+	Convierte la lista de adyacencia a una lista de aristas y de nodos
+	que sirven para crear un modelo de pgmpy.
+	"""
 	nodes = []
 	ebunch = []
 	for node in adj_list:
@@ -87,10 +70,16 @@ def adj_list_to_ebunch_and_nodes(adj_list):
 	return ebunch, nodes
 
 def explore_and_generate_data(nature, intervention_vars, n_steps=100):
+	"""
+	Crea un diccionario con las observaciones a través de la interacción
+	con la naturaleza. La naturaleza es un objeto de la clase TrueCausalModel.
+	"""
 	data_dict = dict()
 	for i in range(n_steps):
 		best_actions = np.random.randint(2, size=1)
-		obs = nature.action_simulator(intervention_vars, best_actions)
+		idx_action = np.random.randint(len(intervention_vars))
+		action = intervention_vars[idx_action]
+		obs = nature.action_simulator([action], best_actions)
 		for k in obs:
 			if k not in data_dict:
 				data_dict[k] = []
@@ -98,12 +87,21 @@ def explore_and_generate_data(nature, intervention_vars, n_steps=100):
 	return data_dict
 
 def update_prob_measures(connection_probas, connection_tables):
+	"""
+	Va actualizando un diccionario con las probabilidades de conexión entre las 
+	variables. Las llaves son las aristas y los valores son listas con las probabilidades
+	de conexión según las creencias en cada paso de aprendizaje.
+	"""
 	for k in connection_tables:
 		if k not in connection_probas:
 			connection_probas[k] = []
 		connection_probas[k] += [connection_tables[k]]
 
 def generate_approx_model_from_graph(ebunch, nodes, df):
+	"""
+	Aprende un modelo Bayesiano de pgmpy usando un datos de un
+	dataframe de pandas. Primero se hace un barajado de los datos.
+	"""
 	df = df.sample(frac=1)
 	approx_model = BayesianModel(ebunch)
 	approx_model.add_nodes_from(nodes)
@@ -111,94 +109,188 @@ def generate_approx_model_from_graph(ebunch, nodes, df):
 	return approx_model
 
 
-def update_connection_beliefs(model, connection_tables, adj_list, df, nature_response):
-	model_with_ij = deepcopy(model)
-	model_without_ij = deepcopy(model)
-	ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
-	print("GRAPH")
-	print("+" * 50)
-	print_dict(adj_list)
-	print(ebunch)
-	print("+" * 50)
+def update_connection_beliefs(model, connection_tables, df, nature_response):
+	"""
+	Función para actualizar las creencias. Utiliza un modelo del agente acerca del mundo,
+	las probabilidades de conexión, datos de interacciones en un dataframe y la observación
+	actual enviada por la naturaleza.
+
+	Para actualizar cada conexión se utiliza la regla:
+
+	p'ij ← P(o| Mij) Probabilidad de la observación dado un modelo con la conexión entre i->j
+	p'~ij <- P(o| M~ij) Probabilidad de la observación dado un modelo sin la conexión entre i->j
+	pij ← (pij * p'ij) / (pij * p'ij + (1 - pij) * p'~ij)
+	"""
+	base_model = deepcopy(model)
+	modified_model = deepcopy(model)
+	ebunch = model.get_ebunch()
+	nodes = model.get_nodes()
+	base_model_from_data = generate_approx_model_from_graph(ebunch, nodes, df)
+	print(base_model_from_data.nodes)
+	base_model.reset(base_model_from_data, ebunch, nodes)
+	print(nature_response)
+	p_obs_given_base_model = base_model.get_joint_prob_observation(
+		nature_response)
+	logging.info("Edges: {}".format(ebunch))
 	for pair in connection_tables:
 		cause = pair[0]
 		effect = pair[1]
-		print("Updating {} -> {}".format(cause, effect))
-		if effect in adj_list[cause]:
-			pgmodel_ij = generate_approx_model_from_graph(ebunch, nodes, df)
-			model_with_ij.reset(pgmodel_ij, ebunch, nodes)
-			print("Edge in graph")
-			print("ebunch : {}".format(ebunch))
-
+		logging.info("Updating {} -> {}".format(cause, effect))
+		if pair in ebunch:
+			logging.info("Edge in graph")
+			logging.info("ebunch : {}".format(ebunch))
+			p_sub = p_obs_given_base_model
 			ebunch_without_ij = copy(ebunch)
 			ebunch_without_ij.remove((cause, effect))
 			pgmodel_notij = generate_approx_model_from_graph(ebunch_without_ij, nodes, df)
-			model_without_ij.reset(pgmodel_notij, ebunch_without_ij, nodes)
-			print("Remove edge in graph")
-			print("ebunch withoutij: {}".format(ebunch_without_ij))
+			modified_model.reset(pgmodel_notij, ebunch_without_ij, nodes)
+			logging.info("Remove edge in graph")
+			logging.info("ebunch withoutij: {}".format(ebunch_without_ij))
+			p_complement = modified_model.get_joint_prob_observation(nature_response)
 		else:
-			print("Edge not in graph")
-			pgmodel_notij = generate_approx_model_from_graph(ebunch, nodes, df)
-			model_without_ij.reset(pgmodel_notij, ebunch, nodes)
-			print("ebunch withoutij : {}".format(ebunch))
+			logging.info("Edge not in graph")
+			logging.info("ebunch withoutij : {}".format(ebunch))
 			ebunch_with_ij = copy(ebunch)
 			ebunch_with_ij.append((cause, effect))	
-			print("Add edge in graph")
-			print("ebunch with : {}".format(ebunch_with_ij))
+			logging.info("Add edge in graph")
+			logging.info("ebunch with : {}".format(ebunch_with_ij))
 			pgmodel_ij = generate_approx_model_from_graph(ebunch_with_ij, nodes, df)
-			model_with_ij.reset(pgmodel_ij, ebunch_with_ij, nodes)
-		
-		# Calcula las probabilidades de observación dados los modelos
-		p_sub = model_with_ij.get_joint_prob_observation(nature_response)
-		p_complement = model_without_ij.get_joint_prob_observation(nature_response)
+			modified_model.reset(pgmodel_ij, ebunch_with_ij, nodes)
+			p_sub = modified_model.get_joint_prob_observation(nature_response)
+			p_complement = p_obs_given_base_model
 		print("Pij = {},  P~ij = {}".format(p_sub, p_complement))
-		if isclose(p_sub, p_complement):
-			print("-" * 50)
-			print("MODEL WITH EDGE")
-			for table in model_with_ij.pgmodel.get_cpds():
-				print(table)
-			print("-" * 50)
-			print("-" * 50)
-			print("MODEL WITHOUT EDGE")
-			for table in model_without_ij.pgmodel.get_cpds():
-				print(table)
-			print("-" * 50)
 		connection_tables[pair] = (connection_tables[pair] * p_sub) / (p_sub * connection_tables[pair] + p_complement * (1 - connection_tables[pair]))
 	return connection_tables
 
-def training(variables, rounds, agent, target, adj_list, connection_tables, data, unknown_model, nature):
-	intervention_vars = agent.model.get_intervention_variables()
+def training(variables, rounds, connection_tables, data, unknown_model, nature):
+	intervention_vars = nature.model.get_intervention_variables()
 	connection_probas = dict()
 	update_prob_measures(connection_probas, connection_tables)
 	local_data = deepcopy(data)
 	df = pd.DataFrame.from_dict(local_data)
 	for rnd in range(rounds):
-		print("*" * 50)
-		print("Round {}".format(rnd))
-		print_dict(connection_tables)
-		best_actions = agent.make_decision(target, intervention_vars)
-		nature_response = agent.nature.action_simulator(intervention_vars, best_actions)
-		agent.rewards_per_round.append(nature_response[target["variable"]])
-		connection_tables = update_connection_beliefs(unknown_model, connection_tables, adj_list, df, nature_response)
+		idx_intervention_var = np.random.randint(len(intervention_vars))
+		action = intervention_vars[idx_intervention_var]
+		action_value = np.random.randint(2)
+		nature_response = nature.action_simulator([action], [action_value])
+		connection_tables = update_connection_beliefs(unknown_model, connection_tables, df, nature_response)
 		update_prob_measures(connection_probas, connection_tables)
-		
 		for k in nature_response:
 			local_data[k].append(nature_response[k])
 		df = pd.DataFrame.from_dict(local_data)
-		
 		adj_list = create_graph_from_beliefs(variables, connection_tables)
 		ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
 		approx_model = generate_approx_model_from_graph(ebunch, nodes, df)
 		unknown_model.reset(approx_model, ebunch, nodes)
-		agent = HalfBlindAgent(nature, unknown_model)
-		print("*" * 50)
 	return connection_probas
 
 
-def main():
+def training_ligh_env_learning(variables, rounds, connection_tables, data_on, data_off, unknown_model_on, unknown_model_off, env):
+	connection_probas = dict()
+	local_data_on = deepcopy(data_on)
+	local_data_off = deepcopy(data_off)
+	df_on = pd.DataFrame.from_dict(local_data_on)
+	df_off = pd.DataFrame.from_dict(local_data_off)
+	for rnd in range(rounds):
+		action_idx = env.action_space.sample()
+		action = "cause_{}".format(action_idx)
+		nature_response = action_simulator(env, action)
+		done = nature_response.pop("done", None)
+		nature_response.pop("reward", None)
+		change_to = nature_response.pop("change_to", None)
+		if change_to == "on":
+			connection_tables = update_connection_beliefs(
+				unknown_model_on, connection_tables, df_on, nature_response)
+		if change_to == "off":
+			connection_tables = update_connection_beliefs(
+				unknown_model_off, connection_tables, df_off, nature_response)
+		else:
+			if np.random.rand() < 0.5:
+				connection_tables = update_connection_beliefs(
+					unknown_model_off, connection_tables, df_on, nature_response)
+			else:
+				connection_tables = update_connection_beliefs(
+					unknown_model_on, connection_tables, df_off, nature_response)
+		update_prob_measures(connection_probas, connection_tables)
+		adj_list = create_graph_from_beliefs(variables, connection_tables)
+		ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
+		if change_to == "on" or change_to == "nothing":
+			for k in nature_response:
+				local_data_on[k].append(nature_response[k])
+			df_on = pd.DataFrame.from_dict(local_data_on)
+			approx_model = generate_approx_model_from_graph(ebunch, nodes, df_on)
+			unknown_model_on.reset(approx_model, ebunch, nodes)
+		if change_to == "off" or change_to == "nothing":
+			for k in nature_response:
+				local_data_off[k].append(nature_response[k])
+			df_off = pd.DataFrame.from_dict(local_data_off)
+			approx_model = generate_approx_model_from_graph(ebunch, nodes, df_off)
+			unknown_model_off.reset(approx_model, ebunch, nodes)
+	return connection_probas
+
+def light_env_learning():
+	from env.light_env import LightEnv
+	rounds = 50
+	exploration_steps = 50
+	env = LightEnv(structure="one_to_one")
+	env.keep_struct = False
+	env.reset()
+	env.keep_struct = True
+	lights_on_model = generate_model_from_env(env)
+	lights_off_model = generate_model_from_env(env, lights_off=True)
+	variables = sorted(lights_on_model.get_graph_toposort())
+	causal_order = variables
+	invalid_edges = []
+	causes = lights_on_model.get_intervention_variables()
+	invalid_edges = generate_invalid_edges_light(variables, causes)
+	experiments = 1
+	global_results = dict()
+	lights_on_model.save_digraph_as_img("light_env.pdf")
+	for i in range(experiments):
+		connection_tables = create_pij(variables, causal_order, invalid_edges)
+		adj_list = create_graph_from_beliefs(variables, connection_tables)
+		ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
+		data_on = dict()
+		data_off = dict()
+		data_on, data_off = explore_light_env(env, exploration_steps)
+		df_on = pd.DataFrame.from_dict(data_on)
+		df_off = pd.DataFrame.from_dict(data_off)
+		approx_model_on = generate_approx_model_from_graph(ebunch, nodes, df_on)
+		approx_model_off = generate_approx_model_from_graph(ebunch, nodes, df_off)
+		unknown_model_on = deepcopy(lights_on_model)
+		unknown_model_off = deepcopy(lights_off_model)
+		unknown_model_on.reset(approx_model_on, ebunch, nodes)
+		unknown_model_off.reset(approx_model_off, ebunch, nodes)
+		connection_probs = training_ligh_env_learning(
+			variables, rounds, connection_tables, data_on, data_off, unknown_model_on, unknown_model_off, env)
+		for key in connection_probs:
+			if key not in global_results:
+				global_results[key] = []
+			global_results[key].append(connection_probs[key])
+	labels = []
+	mean_vectors = []
+	std_dev_vectors = []
+	for key in global_results:
+		mean_vec = np.mean(global_results[key], axis=0)
+		labels += [key]
+		mean_vectors.append(mean_vec)
+		std_dev_vectors.append(np.std(global_results[key], axis=0))
+	x_axis = np.arange(len(mean_vectors[0]))
+	with open('mean.npy', 'wb') as f:
+		np.save(f, np.array(mean_vectors))
+	with open('std_dev.npy', 'wb') as f:
+		np.save(f, np.array(std_dev_vectors))
+	with open('labels.npy', 'wb') as f:
+		np.save(f, np.array(labels))
+	plot_measures(x_axis, mean_vectors, std_dev_vectors, labels, "connection_beliefs_lights_exp_{}_rounds_{}".format(experiments, rounds))
+	for i in range(len(mean_vectors)):
+		plot_measures(x_axis, [mean_vectors[i]], [std_dev_vectors[i]], [labels[i]], "connection_beliefs_lights_{}_exp_{}_rounds_{}".format(labels[i], experiments, rounds))
+		# print(connection_probs)
+	
+def basic_model_learning():
 	DG = nx.DiGraph([("Reaccion", "Final"), ("Tratamiento", "Reaccion"), ("Tratamiento", "Final"), ("Enfermedad", "Final")])
 	causal_order = list(nx.topological_sort(DG))
-	invalid_edges = sorted([("Enfermedad", "Tratamiento")])
+	invalid_edges = [("Enfermedad", "Tratamiento")]
 
 
 	COMPLETE_MODEL = BaseModel('configs/model_parameters.json')
@@ -213,9 +305,9 @@ def main():
 
 	experiments = 10
 	global_results = dict()
+	rounds = 100
 	for i in range(experiments):
-		rounds = 200
-		data = explore_and_generate_data(nature, intervention_vars, n_steps=100)
+		data = explore_and_generate_data(nature, intervention_vars, n_steps=50)
 		df = pd.DataFrame.from_dict(data)
 		connection_tables = create_pij(variables, causal_order, invalid_edges)
 		adj_list = create_graph_from_beliefs(variables, connection_tables)
@@ -227,7 +319,8 @@ def main():
 		unknown_model.show_graph()
 		agent = HalfBlindAgent(nature, unknown_model)
 
-		connection_probas = training(variables, rounds, agent, target, adj_list, connection_tables, data, unknown_model, nature)
+		connection_probas = training(
+			variables, rounds, connection_tables, data, unknown_model, nature)
 		print_dict(connection_tables)
 		for key in connection_probas:
 			if key not in global_results:
@@ -246,7 +339,8 @@ def main():
 		plot_measures(x_axis, [mean_vectors[i]], [std_dev_vectors[i]], [labels[i]], "connection_beliefs_{}_exp_{}_rounds_{}_{}".format(labels[i], experiments, rounds, intervention_vars))
 
 if __name__ == '__main__':
-	main()
+	light_env_learning()
+	# basic_model_learning()
 
 
 
