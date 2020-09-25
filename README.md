@@ -149,3 +149,15 @@ Los resultados obtenidos de la recomensa acumulada promedio son
 	+ El número de observaciones en la exploración.
 	+ Es posible que aunque las tablas de probabilidad condicional sean diferentes para dos modelos, la tabla de probabilidad conjunta sea la misma o coincidan en algunos valores para diferentes observaciones.
 + Crear función para graficar diferentes experimentos y sus desviaciones estándar.
+
++ Más que tratar a cada variables por separado X_1 = 0, ... X_N = 0 tratarlo como un solo estado X_1 = 1,...,0
+
++ Tener dos tablas de PC P_ON y P_OFF
+    + La respuesta de la naturaleza nos puede decir cuál de las tablas se debe usar.
+    + Modificar las tablas según la acción dada
+
++ Debe haber una mejor forma de modelar la probabilidad de los switches. Tal vez también de a dos tablas. Donde estén uniformamente distribuidos de acuerdo con los switches necesarions para alcanzar la meta.
+
++ En dónde debo usar elegir cuál de los dos modelos usar? Porque en realidad la
+naturaleza no lo utiliza. Siempre debe ser
+antes de realizar una acción. Qué modelo sigo, o después?

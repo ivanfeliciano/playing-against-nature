@@ -428,7 +428,7 @@ def basic_model_learning():
 
 if __name__ == '__main__':
 	print("ONE TO ONE")
-	light_env_learning(structure="one_to_one", l=20, num_structures=5, rounds=50)
+	light_env_learning(structure="one_to_one", l=20, num_structures=1, rounds=50, num=9)
 	# print("ONE TO MANY")
 	# light_env_learning(structure="one_to_many", l=20, num_structures=10, rounds=50)
 	# print("MANY TO ONE")

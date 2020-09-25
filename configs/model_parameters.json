@@ -1,49 +1,49 @@
 {
   "digraph": [
     [
-      "Enfermedad",
-      "Final"
+      "Disease",
+      "Lives"
     ],
     [
-      "Tratamiento",
-      "Final"
+      "Treatment",
+      "Lives"
     ],
     [
-      "Tratamiento",
-      "Reaccion"
+      "Treatment",
+      "Reaction"
     ],
     [
-      "Reaccion",
-      "Final"
+      "Reaction",
+      "Lives"
     ]
   ],
   "cpdtables": [
     {
-      "variable": "Enfermedad",
+      "variable": "Disease",
       "variable_card" : 2,
       "values" : [
         [0.7, 0.3]
       ]
     },
     {
-      "variable": "Tratamiento",
+      "variable": "Treatment",
       "variable_card" : 2,
       "values" : [
         [0.5, 0.5]
       ]
     },
     {
-      "variable": "Reaccion",
+      "variable": "Reaction",
       "variable_card" : 2,
       "values" : [
         [0.7, 0.4],
         [0.3, 0.6]
       ],
       "evidence_card" : [2],
-      "evidence" : ["Tratamiento"]
+      "evidence" : ["Treatment"]
     },
     {
-      "variable": "Final",
+      "variable": "Lives",
       "variable_card" : 2,
       "values" : [
         [0.6, 0, 0.8, 0, 0.4, 0, 0.9, 0],
@@ -51,17 +51,17 @@
       ],
       "evidence_card" : [2, 2, 2],
       "evidence" : [
-        "Enfermedad",
-        "Tratamiento",
-        "Reaccion"
+        "Disease",
+        "Treatment",
+        "Reaction"
       ]
     }
   ],
-  "target": "Final",
+  "target": "Lives",
   "nature_variables": [
-    "Enfermedad"
+    "Disease"
   ],
   "interventions" : [
-    "Tratamiento"
+    "Treatment"
   ]
 }

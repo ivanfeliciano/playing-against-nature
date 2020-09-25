@@ -52,6 +52,29 @@ class CausalAgent(Agent):
 	def training(self, rounds, target_value):
 		raise NotImplementedError
 
+	def make_decision_advanced(self, target, intervened_variables, threshold=-float("inf")):
+		"""
+		Elige la mejor combinación acciones que puede tomar
+		de acuerdo con la mayor probilidad de obtener cierto
+		valor en el target. Por ahora sólo funciona para una variable
+		targer y múltiples variables intervenidas.
+		"""
+		target_name = target["variable"]
+		target_value = int(target["value"])
+		val_inter_vars = [self.model.get_variable_values(i)\
+							for i in intervened_variables]
+		cartesian_prod = list(itertools.product(*val_inter_vars))
+		best_actions = None
+		max_prob = threshold
+		for vars_tuples in itertools.product(*val_inter_vars):
+			query_dict = dict()
+			for i in range(len(intervened_variables)):
+				query_dict[intervened_variables[i]] = vars_tuples[i]
+			prob_table = self.do_calculus(target_name, query_dict)
+			logging.info(prob_table)
+			prob = prob_table[target_value]
+			if prob >= max_prob: max_prob = prob; best_actions = vars_tuples
+		return best_actions
 class FullyInformedAgent(CausalAgent):
 	def training(self, rounds, target_value):
 		intervention_vars = self.model.get_intervention_variables()

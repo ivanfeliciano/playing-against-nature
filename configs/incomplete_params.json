@@ -1,0 +1,10 @@
+{
+  "digraph": [],
+  "target": "Live",
+  "nature_variables": [
+    "Disease"
+  ],
+  "interventions" : [
+    "Treatment"
+  ]
+}
