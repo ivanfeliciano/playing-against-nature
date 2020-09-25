@@ -1,3 +1,4 @@
+import math
 
 def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
 	"""
@@ -19,3 +20,12 @@ def is_a_valid_edge(x, y, causal_order, invalid_edges):
 	if (x, y) in invalid_edges or causal_order.index(y) < causal_order.index(x):
 		return False
 	return True
+
+def compare_edges(g_truth, beliefs, epsilon=0.5):
+	distance = 0.0
+	for edge in beliefs:
+		true_value = g_truth.get(edge, 0)
+		pred = 0 if beliefs[edge] <= epsilon else beliefs[edge]
+		distance += ((true_value - pred) ** 2 )
+	return math.sqrt(distance)
+	

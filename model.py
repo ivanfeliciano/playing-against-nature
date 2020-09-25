@@ -59,7 +59,7 @@ class BaseModel(object):
 			usando matplotlib.
 			graph_id (str): el nombre para identificar el grafo. 
 		"""
-		self.digraph =  nx.DiGraph(ebunch)
+		self.digraph = nx.DiGraph(ebunch)
 		for node in nodes:
 			self.digraph.add_node(node)
 		if plot: self.save_digraph_as_img(graph_id)

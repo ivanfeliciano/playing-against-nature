@@ -48,36 +48,40 @@ class TrueCausalModel:
 		return response
 
 class TrueCausalModelEnv(TrueCausalModel):
-	def __init__(self, env, model):
-		self.env = env
+	def __init__(self, model):
 		self.model = model
 		self.reward = None
-		self.state = None
-		self.done = None
-		self.num = self.env.num
+		self.num = len(self.model.get_intervention_variables())
 		self.cause_val = {"cause_{}".format(i) : 
 										0 for i in range(self.num)}
-
-	def action_simulator(self, chosen_action, values_chosen_action):
+		self.state = None
+		self.reward = 0
+	def reset(self):
+		self.cause_val = {"cause_{}".format(i):
+					0 for i in range(self.num)}
+		self.state = None
+		self.reward = 0
+	def action_simulator(self, env, chosen_action):
 		"""
 		Ejecuta un paso en el ambiente y genera respuesta.
 		"""
-		print(self.env.aj)
-		print(self.env._get_obs()[:self.num])
 		action = int(chosen_action.strip().split("_")[-1])
-		if values_chosen_action == 0:
-			action = self.num
-		print(action)
-		self.state, self.reward, self.done, info = self.env.step(action)
-		print(self.state[:self.num])
+		state, reward, done, info = env.step(action)
+		self.state = state
+		self.reward += reward
 		response = dict()
-		if action < self.num:
-			self.cause_val["cause_{}".format(action)] += 1 
-			self.cause_val["cause_{}".format(action)] %= 2 
-		for i in range(self.num):
-			response["effect_{}".format(i)] = self.state[i]
-		for cause in self.cause_val:
-			response[cause] = self.cause_val[cause]
+		response["reward"] = reward
+		response["done"] = done
+		if action < env.num:
+			# self.cause_val["cause_{}".format(action)] += 1 
+			# self.cause_val["cause_{}".format(action)] %= 2 
+			response["cause_{}".format(action)] = 1
+		for i in range(env.num):
+			response["effect_{}".format(i)] = int(state[i])
+			if i != action:
+				response["cause_{}".format(i)] = 0
+		# for cause in self.cause_val:
+		# 	response[cause] = self.cause_val[cause]
 		return response
 def main():
 	logging.basicConfig(filename="logs/test_nature_light.log", filemode='w', level=logging.INFO)
@@ -87,17 +91,17 @@ def main():
 	# print(r)
 	# r = tcm.action_simulator(['Tratamiento'], [0])
 	# print(r)
-	from utils.light_env_to_model import generate_model_from_env
+	from utils.light_env_utils import generate_model_from_env
 	from env.light_env import LightEnv
-	env = LightEnv(structure="one_to_many")
+	env = LightEnv(structure="one_to_one")
 	env.keep_struct = False
 	env.reset()
 	env.keep_struct = True
 	model = generate_model_from_env(env)
-	nature_light_switch = TrueCausalModelEnv(env, model)
+	nature_light_switch = TrueCausalModelEnv(model)
 	variable = "cause_1"
 	value = 1
-	r = nature_light_switch.action_simulator(variable, value)
+	r = nature_light_switch.action_simulator(env, variable)
 	print(r)
 
 

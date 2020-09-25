@@ -38,7 +38,7 @@ def plot_rewards_comparison(results, rounds, labels, _id=0):
 	plt.close()
 
 
-def plot_measures(x_axis, mean_vecs, std_dev_vectors, labels, filename, color=None):
+def plot_measures(x_axis, mean_vecs, std_dev_vectors, labels, filename, color=None, legend=True):
 	# fig, ax1 = plt.subplots()
 	# ax1.set_xlabel('Episodios')
 	# ax1.set_ylabel('Recompensa promedio')
@@ -46,7 +46,8 @@ def plot_measures(x_axis, mean_vecs, std_dev_vectors, labels, filename, color=No
 		plt.plot(x_axis, mean_vecs[i], label=labels[i])
 		plt.fill_between(x_axis, mean_vecs[i] - std_dev_vectors[i], mean_vecs[i] + std_dev_vectors[i],\
 						alpha=0.2)
-	plt.legend(loc='best')
+	if legend:
+		plt.legend(loc='best')
 	plt.savefig("{}.pdf".format(filename), bbox_inches='tight')
 	plt.close()
 
