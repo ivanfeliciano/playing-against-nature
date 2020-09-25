@@ -4,6 +4,7 @@
 import itertools
 from copy import deepcopy, copy
 import logging
+from multiprocessing import Pool
 
 import numpy as np
 import networkx as nx
@@ -116,9 +117,79 @@ def generate_approx_model_from_graph(ebunch, nodes, df):
 	return approx_model
 
 
+def pool_handler(pair, ebunch, nodes, df, nature_response, modified_model):
+	"""
+	Función que genera un modelo a partir de las observaciones y calcula
+	la función de probabilidad conjunta para una obseravación en 
+	específico.
+	
+	"""
+	pgmodel = generate_approx_model_from_graph(ebunch, nodes, df)
+	modified_model.reset(pgmodel, ebunch, nodes)
+	proba = modified_model.get_joint_prob_observation(nature_response)
+	return (pair, proba)
+
 def update_connection_beliefs(model, connection_tables, df, nature_response):
 	"""
-	Función para actualizar las creencias. Utiliza un modelo del agente acerca del mundo,
+	Función para actualizar las creencias usando 
+	un multiprocessing. Utiliza un modelo del agente acerca del mundo,
+	las probabilidades de conexión, datos de interacciones en un dataframe y la observación
+	actual enviada por la naturaleza.
+
+	Para actualizar cada conexión se utiliza la regla:
+
+	p'ij ← P(o| Mij) Probabilidad de la observación dado un modelo con la conexión entre i->j
+	p'~ij <- P(o| M~ij) Probabilidad de la observación dado un modelo sin la conexión entre i->j
+	pij ← (pij * p'ij) / (pij * p'ij + (1 - pij) * p'~ij)
+	"""
+	base_model = deepcopy(model)
+	modified_model = deepcopy(model)
+	ebunch = model.get_ebunch()
+	nodes = model.get_nodes()
+	base_model_from_data = generate_approx_model_from_graph(ebunch, nodes, df)
+	base_model.reset(base_model_from_data, ebunch, nodes)
+	p_obs_given_base_model = base_model.get_joint_prob_observation(
+		nature_response)
+	p_complements = []
+	p_subs = []
+	p_complements_pool = []
+	p_subs_pool = []
+	for pair in connection_tables:
+		cause = pair[0]
+		effect = pair[1]
+		if pair in ebunch:
+			p_sub = p_obs_given_base_model
+			p_subs.append((pair, p_sub))
+			ebunch_without_ij = copy(ebunch)
+			ebunch_without_ij.remove((cause, effect))
+			p_complements_pool.append(
+				(pair, ebunch_without_ij, nodes, copy(df), copy(nature_response), deepcopy(model)))
+		else:
+			ebunch_with_ij = copy(ebunch)
+			ebunch_with_ij.append((cause, effect))	
+			key_ebunch_with_ij = tuple(sorted(ebunch_with_ij))
+			p_complement = p_obs_given_base_model
+			p_complements.append((pair, p_complement))
+			p_subs_pool.append((pair, ebunch_with_ij, nodes, copy(
+				df), copy(nature_response), deepcopy(model)))
+	with Pool() as pool:
+		p_complements += pool.starmap(pool_handler, p_complements_pool)
+	with Pool() as pool:
+		p_subs += pool.starmap(pool_handler, p_subs_pool)
+	p_sub_dict = dict()
+	p_complement_dict = dict()
+	for pair in p_complements:
+		p_complement_dict[pair[0]] = pair[1]
+	for pair in p_subs:
+		p_sub_dict[pair[0]] = pair[1]
+	for pair in connection_tables:
+		connection_tables[pair] = (connection_tables[pair] * p_sub_dict[pair]) / (p_sub_dict[pair] * connection_tables[pair] + p_complement_dict[pair] * (1 - connection_tables[pair]))
+	return connection_tables
+
+def update_connection_beliefs_seq(model, connection_tables, df, nature_response):
+	"""
+	Función para actualizar las creencias usando 
+	un proceso. Utiliza un modelo del agente acerca del mundo,
 	las probabilidades de conexión, datos de interacciones en un dataframe y la observación
 	actual enviada por la naturaleza.
 
@@ -200,7 +271,7 @@ def training_ligh_env_learning(variables, rounds, connection_tables, data_on, da
 	df_off = pd.DataFrame.from_dict(local_data_off)
 	update_prob_measures(connection_probas, connection_tables)
 	for rnd in range(rounds):
-		# print("Round {} / {}".format(rnd + 1, rounds))
+		print("Round {} / {}".format(rnd + 1, rounds))
 		action_idx = env.action_space.sample()
 		action = "cause_{}".format(action_idx)
 		nature_response = action_simulator(env, action)
@@ -357,7 +428,7 @@ def basic_model_learning():
 
 if __name__ == '__main__':
 	print("ONE TO ONE")
-	light_env_learning(structure="one_to_one", l=20, num_structures=10, rounds=50)
+	light_env_learning(structure="one_to_one", l=20, num_structures=5, rounds=50)
 	# print("ONE TO MANY")
 	# light_env_learning(structure="one_to_many", l=20, num_structures=10, rounds=50)
 	# print("MANY TO ONE")
