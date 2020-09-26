@@ -1,3 +1,4 @@
+import os
 import math
 
 def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
@@ -29,3 +30,17 @@ def compare_edges(g_truth, beliefs, epsilon=0.5):
 		distance += ((true_value - pred) ** 2 )
 	return math.sqrt(distance)
 	
+def create_dirs_results(base_dir):
+	"""
+	Crea los directorios necesarios para guardar los 
+	resultados de los experimentos:
+		+ Plots : Se guardan las gráficas de pij
+		+ Matrices de resultados : Archivos pickle que guardan las pij
+		+ Grafos: Las estructuras del GT
+	"""
+	plots_path = os.path.join(base_dir, "plots")
+	graphs_path = os.path.join(base_dir, "graphs")
+	mats_path = os.path.join(base_dir, "mats")
+	for p in [base_dir, plots_path, graphs_path, mats_path]:
+		if not os.path.exists(p):
+			os.makedirs(p)

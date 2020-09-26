@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
+import time
+import pickle
 import itertools
 from copy import deepcopy, copy
 import logging
@@ -14,6 +17,7 @@ from pgmpy.inference import VariableElimination
 from scipy.stats import beta, dirichlet
 import matplotlib.pyplot as plt
 import pandas as pd
+import tqdm
 
 
 from model import BaseModel
@@ -24,6 +28,7 @@ from env.light_env import LightEnv
 from utils.light_env_utils import *
 from utils.helpers import *
 from utils.modified_estimator import SmoothedMaximumLikelihoodEstimator
+
 np.random.seed(0)
 
 def create_pij(variables, causal_order, invalid_edges):
@@ -36,7 +41,6 @@ def create_pij(variables, causal_order, invalid_edges):
 	"""
 	connection_tables = dict()
 	for pair in itertools.combinations((variables), 2):
-		# proba = np.random.rand()
 		proba = 0.5
 		if is_a_valid_edge(pair[0], pair[1], causal_order, invalid_edges):
 			connection_tables[(pair[0], pair[1])] = proba
@@ -119,10 +123,10 @@ def generate_approx_model_from_graph(ebunch, nodes, df):
 
 def pool_handler(pair, ebunch, nodes, df, nature_response, modified_model):
 	"""
-	Función que genera un modelo a partir de las observaciones y calcula
-	la función de probabilidad conjunta para una obseravación en 
+	Función para el pool de multiprocessiong 
+	que genera un modelo a partir de las observaciones y calcula
+	la función de probabilidad conjunta para una observación en 
 	específico.
-	
 	"""
 	pgmodel = generate_approx_model_from_graph(ebunch, nodes, df)
 	modified_model.reset(pgmodel, ebunch, nodes)
@@ -132,7 +136,7 @@ def pool_handler(pair, ebunch, nodes, df, nature_response, modified_model):
 def update_connection_beliefs(model, connection_tables, df, nature_response):
 	"""
 	Función para actualizar las creencias usando 
-	un multiprocessing. Utiliza un modelo del agente acerca del mundo,
+	multiprocessing. Utiliza un modelo del agente acerca del mundo,
 	las probabilidades de conexión, datos de interacciones en un dataframe y la observación
 	actual enviada por la naturaleza.
 
@@ -207,31 +211,21 @@ def update_connection_beliefs_seq(model, connection_tables, df, nature_response)
 	base_model.reset(base_model_from_data, ebunch, nodes)
 	p_obs_given_base_model = base_model.get_joint_prob_observation(
 		nature_response)
-	logging.info("Edges: {}".format(ebunch))
 	for pair in connection_tables:
 		cause = pair[0]
 		effect = pair[1]
-		logging.info("Updating {} -> {}".format(cause, effect))
 		if pair in ebunch:
-			logging.info("Edge in graph")
-			logging.info("ebunch : {}".format(ebunch))
 			p_sub = p_obs_given_base_model
 			ebunch_without_ij = copy(ebunch)
 			ebunch_without_ij.remove((cause, effect))
 			pgmodel_notij = generate_approx_model_from_graph(ebunch_without_ij, nodes, df)
 			modified_model.reset(pgmodel_notij, ebunch_without_ij, nodes)
-			logging.info("Remove edge in graph")
-			logging.info("ebunch withoutij: {}".format(ebunch_without_ij))
 			p_complement = modified_model.get_joint_prob_observation(nature_response)
 		else:
-			logging.info("Edge not in graph")
-			logging.info("ebunch withoutij : {}".format(ebunch))
 			ebunch_with_ij = copy(ebunch)
 			ebunch_with_ij.append((cause, effect))	
 			key_ebunch_with_ij = tuple(sorted(ebunch_with_ij))
 			p_complement = p_obs_given_base_model
-			logging.info("Add edge in graph")
-			logging.info("ebunch with : {}".format(ebunch_with_ij))
 			pgmodel_ij = generate_approx_model_from_graph(ebunch_with_ij, nodes, df)
 			modified_model.reset(pgmodel_ij, ebunch_with_ij, nodes)
 			p_sub = modified_model.get_joint_prob_observation(nature_response)
@@ -246,7 +240,9 @@ def training(variables, rounds, connection_tables, data, unknown_model, nature):
 	update_prob_measures(connection_probas, connection_tables)
 	local_data = deepcopy(data)
 	df = pd.DataFrame.from_dict(local_data)
-	for rnd in range(rounds):
+	pbar = tqdm.trange(rounds)
+	for rnd in pbar:
+		pbar.set_description("Training rounds")
 		idx_intervention_var = np.random.randint(len(intervention_vars))
 		action = intervention_vars[idx_intervention_var]
 		action_value = np.random.randint(2)
@@ -270,8 +266,9 @@ def training_ligh_env_learning(variables, rounds, connection_tables, data_on, da
 	df_on = pd.DataFrame.from_dict(local_data_on)
 	df_off = pd.DataFrame.from_dict(local_data_off)
 	update_prob_measures(connection_probas, connection_tables)
-	for rnd in range(rounds):
-		print("Round {} / {}".format(rnd + 1, rounds))
+	pbar = tqdm.trange(rounds)
+	for rnd in pbar:
+		pbar.set_description("Interaction rounds")
 		action_idx = env.action_space.sample()
 		action = "cause_{}".format(action_idx)
 		nature_response = action_simulator(env, action)
@@ -308,28 +305,35 @@ def training_ligh_env_learning(variables, rounds, connection_tables, data_on, da
 			unknown_model_off.reset(approx_model, ebunch, nodes)
 	return connection_probas
 
-def light_env_learning(base_dir="results", structure="one_to_one", num=5, rounds=50, l=50, experiments=1, num_structures=10):
+def light_env_learning(base_dir="results", structure="one_to_one", num=5, 
+						rounds=50, l=50, experiments_per_structure=1, num_structures=10):
 	from env.light_env import LightEnv
-	rounds = rounds
 	exploration_steps = l
 	env = LightEnv(structure=structure, num=num)
-	for s in range(num_structures):
-		print("Structure {} / {}".format(s + 1, num_structures))
+	base_path = os.path.join(base_dir, "light-switches", structure, str(num))
+	create_dirs_results(base_path)
+	p_bar_structures = tqdm.trange(num_structures)
+	results_data = dict()
+	start_time = time.time()
+	for s in p_bar_structures:
+		p_bar_structures.set_description("Learning Structure")
 		env.keep_struct = False
 		env.reset()
 		env.keep_struct = True
 		lights_on_model = generate_model_from_env(env)
 		lights_off_model = generate_model_from_env(env, lights_off=True)
+		unknown_model_on = deepcopy(lights_on_model)
+		unknown_model_off = deepcopy(lights_off_model)
 		variables = sorted(lights_on_model.get_graph_toposort())
 		causal_order = variables
 		invalid_edges = []
 		causes = lights_on_model.get_intervention_variables()
 		invalid_edges = generate_invalid_edges_light(variables, causes)
-		experiments = 1
 		global_results = dict()
-		lights_on_model.save_digraph_as_img("{}/{}/light_env_{}.pdf".format(base_dir, structure, s))
+		base_structure_filename = f"light_env_struct_{structure}_{s + 1}"
+		lights_on_model.save_digraph_as_img(os.path.join(base_path, "graphs", base_structure_filename + ".pdf"))
 		g_truth = {e : 1 for e in lights_on_model.digraph.edges}
-		for i in range(experiments):
+		for i in range(experiments_per_structure):
 			connection_tables = create_pij(variables, causal_order, invalid_edges)
 			adj_list = create_graph_from_beliefs(variables, connection_tables)
 			ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
@@ -340,8 +344,6 @@ def light_env_learning(base_dir="results", structure="one_to_one", num=5, rounds
 			df_off = pd.DataFrame.from_dict(data_off)
 			approx_model_on = generate_approx_model_from_graph(ebunch, nodes, df_on)
 			approx_model_off = generate_approx_model_from_graph(ebunch, nodes, df_off)
-			unknown_model_on = deepcopy(lights_on_model)
-			unknown_model_off = deepcopy(lights_off_model)
 			unknown_model_on.reset(approx_model_on, ebunch, nodes)
 			unknown_model_off.reset(approx_model_off, ebunch, nodes)
 			connection_probs = training_ligh_env_learning(
@@ -350,28 +352,24 @@ def light_env_learning(base_dir="results", structure="one_to_one", num=5, rounds
 				if key not in global_results:
 					global_results[key] = []
 				global_results[key].append(connection_probs[key])
-		labels = []
-		mean_vectors = []
-		std_dev_vectors = []
-		last_beliefs = dict()
-		for key in global_results:
-			mean_vec = np.mean(global_results[key], axis=0)
-			labels += [key]
-			mean_vectors.append(mean_vec)
-			std_dev_vectors.append(np.std(global_results[key], axis=0))
-			last_beliefs[key] = mean_vectors[-1][-1]
-		x_axis = np.arange(len(mean_vectors[0]))
-		# with open('mean.npy', 'wb') as f:
-		# 	np.save(f, np.array(mean_vectors))
-		# with open('std_dev.npy', 'wb') as f:
-		# 	np.save(f, np.array(std_dev_vectors))
-		# with open('labels.npy', 'wb') as f:
-		# 	np.save(f, np.array(labels))
-		plot_measures(x_axis, mean_vectors, std_dev_vectors, labels, "{}/{}/all_lights_struct_{}_exp_{}_rounds_{}".format(base_dir, structure, s, experiments, rounds), legend=False)
-		for i in range(len(mean_vectors)):
-			plot_measures(x_axis, [mean_vectors[i]], [std_dev_vectors[i]], [labels[i]], "{}/{}/lights_{}_struct_{}_exp_{}_rounds_{}".format(base_dir, structure, labels[i], s, experiments, rounds))
-		for epsilon in [0, 0.25, 0.5, 0.75]:
-			print("{} {}".format(compare_edges(g_truth, last_beliefs, epsilon), epsilon))
+		results_data[f"gt_{s}"] = g_truth
+		results_data[f"beliefs_{s}"] = global_results
+		results_data[f"training_time{s}"] = time.time() - start_time
+		dict_filename = os.path.join(base_path, "mats", base_structure_filename + ".pickle")
+		with open(dict_filename, "wb") as handle:
+			pickle.dump(results_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+		# labels = []
+		# mean_vectors = []
+		# std_dev_vectors = []
+		# last_beliefs = dict()
+		# for key in global_results:
+		# 	mean_vec = np.mean(global_results[key], axis=0)
+		# 	labels += [key]
+		# 	mean_vectors.append(mean_vec)
+		# 	std_dev_vectors.append(np.std(global_results[key], axis=0))
+		# 	last_beliefs[key] = mean_vectors[-1][-1]
+		# x_axis = np.arange(len(mean_vectors[0]))
+		# plot_measures(x_axis, mean_vectors, std_dev_vectors, labels, "{}/{}/all_lights_struct_{}_exp_{}_rounds_{}".format(base_dir, structure, s, experiments, rounds), legend=False)
 def basic_model_learning():
 	DG = nx.DiGraph([("Reaction", "Lives"), ("Treatment", "Reaction"), ("Treatment", "Lives"), ("Disease", "Lives")])
 	causal_order = list(nx.topological_sort(DG))
@@ -427,21 +425,10 @@ def basic_model_learning():
 	
 
 if __name__ == '__main__':
-	print("ONE TO ONE")
-	light_env_learning(structure="one_to_one", l=20, num_structures=1, rounds=50, num=9)
-	# print("ONE TO MANY")
-	# light_env_learning(structure="one_to_many", l=20, num_structures=10, rounds=50)
-	# print("MANY TO ONE")
-	# light_env_learning(structure="many_to_one", l=20, num_structures=10, rounds=50)
-	# print("ONE TO ONE")
-	# light_env_learning(structure="one_to_one", l=200,
-	#                    num_structures=10, rounds=20)
-	# print("ONE TO MANY")
-	# light_env_learning(structure="one_to_many", l=200,
-	#                    num_structures=10, rounds=20)
-	# print("MANY TO ONE")
-	# light_env_learning(structure="many_to_one", l=200,
-	#                    num_structures=10, rounds=20)
+	for n in [5, 7, 9]:
+		for struct in ["one_to_one", "one_to_many", "many_to_one"]:
+			print(n, struct)
+			light_env_learning(structure=struct, l=20, num_structures=10, rounds=50, num=n)
 	# basic_model_learning()
 
 
