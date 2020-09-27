@@ -313,9 +313,9 @@ def light_env_learning(base_dir="results", structure="one_to_one", num=5,
 	base_path = os.path.join(base_dir, "light-switches", structure, str(num))
 	create_dirs_results(base_path)
 	p_bar_structures = tqdm.trange(num_structures)
-	results_data = dict()
 	start_time = time.time()
 	for s in p_bar_structures:
+		results_data = dict()
 		p_bar_structures.set_description("Learning Structure")
 		env.keep_struct = False
 		env.reset()
@@ -354,7 +354,7 @@ def light_env_learning(base_dir="results", structure="one_to_one", num=5,
 				global_results[key].append(connection_probs[key])
 		results_data[f"gt_{s}"] = g_truth
 		results_data[f"beliefs_{s}"] = global_results
-		results_data[f"training_time{s}"] = time.time() - start_time
+		results_data[f"training_time_{s}"] = time.time() - start_time
 		dict_filename = os.path.join(base_path, "mats", base_structure_filename + ".pickle")
 		with open(dict_filename, "wb") as handle:
 			pickle.dump(results_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -419,17 +419,20 @@ def basic_model_learning():
 		std_dev_vectors.append(np.std(global_results[key], axis=0))
 		print("{} {} {}".format(key, mean_vectors[-1][-1], std_dev_vectors[-1][-1]))
 	x_axis = np.arange(len(mean_vectors[0]))
-	plot_measures(x_axis, mean_vectors, std_dev_vectors, labels, "connection_beliefs_exp_{}_rounds_{}_{}".format(experiments, rounds, intervention_vars))
-	for i in range(len(mean_vectors)):
-		plot_measures(x_axis, [mean_vectors[i]], [std_dev_vectors[i]], [labels[i]], "connection_beliefs_{}_exp_{}_rounds_{}_{}".format(labels[i], experiments, rounds, intervention_vars))
+	plot_measures(x_axis, mean_vectors, std_dev_vectors, labels,
+	              "results/disease-treatment/connection_beliefs_exp_{}_rounds_{}_{}".format(experiments, rounds, intervention_vars))
+	# for i in range(len(mean_vectors)):
+	# 	plot_measures(x_axis, [mean_vectors[i]], [std_dev_vectors[i]], [labels[i]], "connection_beliefs_{}_exp_{}_rounds_{}_{}".format(labels[i], experiments, rounds, intervention_vars))
 	
 
 if __name__ == '__main__':
-	for n in [5, 7, 9]:
-		for struct in ["one_to_one", "one_to_many", "many_to_one"]:
-			print(n, struct)
-			light_env_learning(structure=struct, l=20, num_structures=10, rounds=50, num=n)
-	# basic_model_learning()
+	# for n in [5, 7, 9]:
+	# 	for struct in ["one_to_one", "one_to_many", "many_to_one"]:
+	# 		print(n, struct)
+	# 		light_env_learning(structure=struct, l=20, num_structures=10, rounds=50, num=n)
+	# 		break
+	# 	break
+	basic_model_learning()
 
 
 

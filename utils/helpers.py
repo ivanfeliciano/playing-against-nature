@@ -1,5 +1,11 @@
 import os
 import math
+import pickle
+
+import numpy as np
+
+
+from utils.vis_utils import plot_measures
 
 def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
 	"""
@@ -29,7 +35,72 @@ def compare_edges(g_truth, beliefs, epsilon=0.5):
 		pred = 0 if beliefs[edge] <= epsilon else beliefs[edge]
 		distance += ((true_value - pred) ** 2 )
 	return math.sqrt(distance)
-	
+
+def read_dict_from_pickle(pickle_filepath):
+	"""
+	Retorna un diccionario de python que fue 
+	almacenado en un pickle.
+	"""
+	with open(pickle_filepath, "rb") as picke_file:
+		return pickle.load(picke_file)
+
+def metric_per_episode(gt, beliefs, operator):
+	"""
+	Calcula el promedio del xor o exactitud por episodio. De acuerdo
+	con el valor de operator = {"xor", "equal"}
+	"""
+	edges = list(beliefs.keys())
+	number_of_labels = len(edges)
+	number_of_episodes = len(beliefs[edges[0]])
+	results = []
+	for i in range(number_of_episodes):
+		current_sum = 0
+		for edge in beliefs:
+			val_gt = gt.get(edge, False)
+			current_sum += (val_gt ^ beliefs[edge][i]) if \
+                            operator == "xor" else (val_gt == beliefs[edge][i])
+		results.append(current_sum)
+	return np.array(results) / number_of_labels
+
+
+def l2_loss(gt, beliefs):
+	"""
+	Calcula la función de pérdida l2.
+	"""
+	edges = list(beliefs.keys())
+
+	number_of_episodes = len(np.squeeze(beliefs[edges[0]]))
+	results = []
+	for i in range(number_of_episodes):
+		current_sum = 0
+		for edge in beliefs:
+			val_gt = gt.get(edge, 0)
+			current_sum += (val_gt - np.squeeze(beliefs[edge])[i]) ** 2
+		results.append(math.sqrt(current_sum))
+	return results
+
+def transform_to_boolean_values(dict_of_values, epsilon=0.7):
+	"""
+	docstring
+	"""
+	ans = dict()
+	for pair in dict_of_values:
+		values = np.squeeze([dict_of_values[pair]])
+		if not values.shape:
+			binary_values = bool(values)
+		else:
+			binary_values = list(map(lambda x: x > epsilon, values))
+		ans[pair] = binary_values
+	return ans
+
+def apply_metric(gt, beliefs, metric_function, to_binary=False):
+	"""
+	Aplica la métrica de evaluación para comparar
+	las aristas verdaderas y las creencias. Retorna un
+	arreglo con las diferencias por episodio de entrenamiento.
+	"""
+	pass
+
 def create_dirs_results(base_dir):
 	"""
 	Crea los directorios necesarios para guardar los 
@@ -44,3 +115,4 @@ def create_dirs_results(base_dir):
 	for p in [base_dir, plots_path, graphs_path, mats_path]:
 		if not os.path.exists(p):
 			os.makedirs(p)
+

@@ -43,7 +43,7 @@ def plot_measures(x_axis, mean_vecs, std_dev_vectors, labels, filename, color=No
 	# ax1.set_xlabel('Episodios')
 	# ax1.set_ylabel('Recompensa promedio')
 	for i in range(len(mean_vecs)):
-		plt.plot(x_axis, mean_vecs[i], label=labels[i])
+		plt.plot(x_axis, mean_vecs[i], label=labels[i], marker=".")
 		plt.fill_between(x_axis, mean_vecs[i] - std_dev_vectors[i], mean_vecs[i] + std_dev_vectors[i],\
 						alpha=0.2)
 	if legend:
