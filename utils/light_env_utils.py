@@ -4,6 +4,10 @@ import itertools
 from model import BaseModel
 from env.light_env import LightEnv
 
+
+def obs_to_tuple(obs, n):
+    return tuple(map(int, obs[:n]))
+
 def generate_model_from_env(env, lights_off=False):
     aj_mat = env.aj
     aj_list, parents = aj_matrix_to_aj_list(aj_mat)
@@ -131,9 +135,23 @@ def explore_light_env(env, n_steps):
             else:
                 data_dict_on[k].append(obs[k])
                 data_dict_off[k].append(obs[k])
-        # if done:
-        #     env.reset()
+        if done:
+            env.reset()
     return data_dict_on, data_dict_off
+
+
+def get_targets(env):
+    """
+    Retorna las variables cuyo valor es diferente al de la meta.
+    """
+    goal = env.goal
+    obs = env._get_obs()[:env.num]
+    targets = dict()
+    for i in range(len(obs)):
+        if int(obs[i]) != int(goal[i]):
+            targets[f"effect_{i}"] = int(goal[i])
+    return targets
+
 
 
 def action_simulator(env, chosen_action):
@@ -166,10 +184,18 @@ if __name__ == "__main__":
                         filemode='w', level=logging.INFO)
     env = LightEnv(structure="many_to_one")
     env.keep_struct = False
+    print(env._get_obs()[:n])
+    print(env.goal)
     env.reset()
     env.keep_struct = True
+    print(env._get_obs()[:n])
+    print(env.goal)
+    env.reset()
+    print(env._get_obs()[:n])
+    print(env.goal)
+    print(get_targets(env))
     lights_on_model = generate_model_from_env(env)
     lights_off_model = generate_model_from_env(env, lights_off=True)
     data_on, data_off = explore_light_env(env, 10)
-    print(data_on)
-    print(data_off)
+    # print(data_on)
+    # print(data_off)

@@ -2,6 +2,91 @@ import logging
 import numpy as np
 
 from agents.core import Agent
+from utils.helpers import powerset
+from utils.light_env_utils import obs_to_tuple
+from env.light_env import LightEnv
+
+class Policy(object):
+	def __init__(self, eps_max, eps_min, eps_test, nb_steps):
+		self.eps_max = eps_max
+		self.eps_min = eps_min
+		self.eps_test = eps_test
+		self.nb_steps = nb_steps
+		self.step = 0
+		self.current_eps = eps_max
+
+	def get_current_value(self, training=True):
+		if training:
+			a = -float(self.eps_max - self.eps_min) / float(self.nb_steps)
+			b = float(self.eps_max)
+			value = max(self.eps_min, a * float(self.step) + b)
+		else:
+			value = self.eps_test
+		self.step += 1
+		self.current_eps = value
+		return value
+	def select_action(self, state, Q, training=True):
+		raise NotImplementedError
+
+class EpsilonGreedy(Policy):
+	def select_action(self, state, Q, env, training=True, prob_explore=0.0):
+		r = np.random.uniform()
+		eps = self.get_current_value(training)
+		if r > eps:
+			return np.argmax(Q[state])
+		return env.action_space.sample()
+
+class QLearningLightsSwitches(object):
+	"""
+	Clase base para un agente de Q learning.
+	Aquí se configura el ambiente, los parámetros y
+	el flujo del aprendizaje.
+	"""
+	def __init__(self, environment, policy, episodes=100, alpha=0.8, gamma=0.95, mod_episode=1):
+		self.env = environment
+		self.policy = policy
+		self.episodes = episodes
+		self.alpha = alpha
+		self.gamma = gamma
+		self.Q = self.init_q_table()
+		self.mod_episode = mod_episode
+		self.training = True
+	def select_action(self, state):
+		if self.training:
+			return self.policy.select_action(state, self.Q, env)
+		return self.policy.select_action(state, self.Q, training=False)
+	def train(self):
+		self.training = True
+		self.avg_reward = []
+		rewards_per_episode = []
+		for episode in range(self.episodes):
+			total_episode_reward = 0
+			state = self.env.reset()
+			state = obs_to_tuple(state, self.env.num)
+			done = False
+			assisted_times = 0
+			while not done:
+				action = self.select_action(state)
+				new_state, reward, done, info = self.env.step(action)
+				new_state = obs_to_tuple(new_state, self.env.num)
+				self.Q[state][action] = self.Q[state][action] + self.alpha * \
+										(reward + self.gamma * np.max(self.Q[new_state]) -\
+										self.Q[state][action])
+				state = new_state
+				total_episode_reward += reward
+			rewards_per_episode.append(total_episode_reward)
+			if episode == 0 or (episode + 1) % self.mod_episode == 0:
+				rewards_per_episode = self.update_avg_reward(rewards_per_episode)
+		return self.avg_reward
+	def update_avg_reward(self, rewards_per_episode):
+		episodes_block_avg_rwd = np.mean(rewards_per_episode)
+		self.avg_reward.append(episodes_block_avg_rwd)
+		return []
+	def init_q_table(self):
+		all_states = powerset(self.env.num)
+		return {
+			state :  np.zeros(self.env.num + 1) for state in all_states
+		}
 
 class QLearning(Agent):
 	"""
@@ -48,3 +133,16 @@ if __name__ == "__main__":
 	rounds = 100
 	qlearning_agent = QLearning(nature, 0.3)
 	qlearning_agent.training(rounds)
+	print(qlearning_agent.rewards_per_round)
+	env = LightEnv()
+	env.keep_struct = False
+	env.reset()
+	env.keep_struct = True
+	episodes = 100
+	eps_policy = EpsilonGreedy(1, 0.1, 0.1, 1)
+	vanilla_q_learning = QLearningLightsSwitches(env, eps_policy, episodes=episodes, mod_episode=5)
+	vanilla_q_learning.train()
+	for i in range(len(vanilla_q_learning.avg_reward)):
+		print(i, vanilla_q_learning.avg_reward[i])
+	
+	

@@ -5,24 +5,21 @@ import os
 import time
 import pickle
 import itertools
+import random
 from copy import deepcopy, copy
 import logging
 from multiprocessing import Pool
 
+import tqdm
 import numpy as np
 import networkx as nx
-from pgmpy.models import BayesianModel
-from pgmpy.factors.discrete import TabularCPD
-from pgmpy.inference import VariableElimination
-from scipy.stats import beta, dirichlet
-import matplotlib.pyplot as plt
 import pandas as pd
-import tqdm
-
+import matplotlib.pyplot as plt
+from pgmpy.models import BayesianModel
+from pgmpy.inference import VariableElimination
 
 from model import BaseModel
-from true_causal_model import TrueCausalModel, TrueCausalModelEnv
-from agents.causal_agents import HalfBlindAgent
+from true_causal_model import TrueCausalModel
 from utils.vis_utils import plot_measures, plot_probabilities
 from env.light_env import LightEnv
 from utils.light_env_utils import *
@@ -30,6 +27,32 @@ from utils.helpers import *
 from utils.modified_estimator import SmoothedMaximumLikelihoodEstimator
 
 np.random.seed(0)
+
+
+def do_calculus(infer_system, variable, evidence):
+	"""
+	Calcula la tabla de probabilidad condicional para una
+	variable efecto dada una variable de acción.
+	"""
+	return infer_system.query([variable],
+                    evidence=evidence, show_progress=False).values
+
+def get_best_action(model, target, actions):
+	"""
+	Selecciona la mejor acción a realizar dada el modelo actual
+	y la variable objetivo.
+	"""
+	best_action = None
+	max_prob = -float("inf")
+	for action in actions:
+		for val in actions[action]:
+			query_dict = { action : val }
+			prob_table = do_calculus(model.infer_system, target["variable"], query_dict)
+			prob = prob_table[target["value"]]
+			if max_prob < prob:
+				max_prob = prob
+				best_action = (action, val)
+	return best_action
 
 def create_pij(variables, causal_order, invalid_edges):
 	"""
@@ -234,19 +257,25 @@ def update_connection_beliefs_seq(model, connection_tables, df, nature_response)
 		connection_tables[pair] = (connection_tables[pair] * p_sub) / (p_sub * connection_tables[pair] + p_complement * (1 - connection_tables[pair]))
 	return connection_tables
 
-def training(variables, rounds, connection_tables, data, unknown_model, nature):
+def training(variables, rounds, connection_tables, data, unknown_model, nature, target, exploration_rate=1):
 	intervention_vars = nature.model.get_intervention_variables()
+	actions = {action : [0, 1] for action in intervention_vars}
 	connection_probas = dict()
 	update_prob_measures(connection_probas, connection_tables)
 	local_data = deepcopy(data)
 	df = pd.DataFrame.from_dict(local_data)
 	pbar = tqdm.trange(rounds)
+	rewards = []
 	for rnd in pbar:
 		pbar.set_description("Training rounds")
-		idx_intervention_var = np.random.randint(len(intervention_vars))
-		action = intervention_vars[idx_intervention_var]
-		action_value = np.random.randint(2)
-		nature_response = nature.action_simulator([action], [action_value])
+		if rnd < (rounds * exploration_rate):
+			idx_intervention_var = np.random.randint(len(intervention_vars))
+			action = (intervention_vars[idx_intervention_var], np.random.randint(2))
+		else:
+			action = get_best_action(unknown_model, target, actions)
+		nature_response = nature.action_simulator([action[0]], [action[1]])
+		reward = nature_response[target["variable"]]
+		rewards.append(reward)
 		connection_tables = update_connection_beliefs(unknown_model, connection_tables, df, nature_response)
 		update_prob_measures(connection_probas, connection_tables)
 		for k in nature_response:
@@ -256,10 +285,10 @@ def training(variables, rounds, connection_tables, data, unknown_model, nature):
 		ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
 		approx_model = generate_approx_model_from_graph(ebunch, nodes, df)
 		unknown_model.reset(approx_model, ebunch, nodes)
-	return connection_probas
+	return connection_probas, rewards
 
 
-def training_ligh_env_learning(variables, rounds, connection_tables, data_on, data_off, unknown_model_on, unknown_model_off, env):
+def training_ligh_env_learning(variables, rounds, connection_tables, data_on, data_off, unknown_model_on, unknown_model_off, env, mod_episode=5):
 	connection_probas = dict()
 	local_data_on = deepcopy(data_on)
 	local_data_off = deepcopy(data_off)
@@ -267,13 +296,38 @@ def training_ligh_env_learning(variables, rounds, connection_tables, data_on, da
 	df_off = pd.DataFrame.from_dict(local_data_off)
 	update_prob_measures(connection_probas, connection_tables)
 	pbar = tqdm.trange(rounds)
+	actions = {f"cause_{i}": [1,] for i in range(env.num + 1)}
+	rewards_per_block= []
+	steps = 0
 	for rnd in pbar:
 		pbar.set_description("Interaction rounds")
+		done = False 
+		env.reset()
+		episode_reward = 0
+		rewards_per_episode = []
+		# while not done:
+		steps += 1
+		targets = get_targets(env)
+		# print(f"State : {env._get_obs()[:env.num]}")
+		# print(f"Goal : {env.goal}")
+		# print(f"Targets : {targets}")
+		# if len(targets) and rnd > rounds * 0.95:
+		# 	target_name = random.choice(list(targets.keys()))
+		# 	target_value = targets[target_name]
+		# 	target = dict(variable=target_name, value=target_value)
+		# 	if target_value == 1:
+		# 		action = get_best_action(unknown_model_on, target, actions)
+		# 	else:
+		# 		action = get_best_action(unknown_model_off, target, actions)
+		# else:
 		action_idx = env.action_space.sample()
-		action = "cause_{}".format(action_idx)
-		nature_response = action_simulator(env, action)
+		action = ("cause_{}".format(action_idx),)
+		# print(f"Action : {action[0]}")
+		nature_response = action_simulator(env, action[0])
 		done = nature_response.pop("done", None)
-		nature_response.pop("reward", None)
+		reward = nature_response.pop("reward", None)
+		episode_reward += reward
+		# print(f"Reward : {reward}")
 		change_to = nature_response.pop("change_to", None)
 		if change_to == "on":
 			connection_tables = update_connection_beliefs(
@@ -303,14 +357,20 @@ def training_ligh_env_learning(variables, rounds, connection_tables, data_on, da
 			df_off = pd.DataFrame.from_dict(local_data_off)
 			approx_model = generate_approx_model_from_graph(ebunch, nodes, df_off)
 			unknown_model_off.reset(approx_model, ebunch, nodes)
+		# rewards_per_episode.append(episode_reward)
+		# if rnd == 0 or (rnd + 1) % mod_episode == 0:
+		# 	rewards_per_block.append(np.mean(rewards_per_episode))
+	# for i in range(len(rewards_per_block)):
+	# 	print(i, rewards_per_block[i])
 	return connection_probas
 
-def light_env_learning(base_dir="results", structure="one_to_one", num=5, 
+
+def light_env_learning(base_dir="results/light-switches", structure="one_to_one", num=5,
 						rounds=50, l=50, experiments_per_structure=1, num_structures=10):
 	from env.light_env import LightEnv
 	exploration_steps = l
 	env = LightEnv(structure=structure, num=num)
-	base_path = os.path.join(base_dir, "light-switches", structure, str(num))
+	base_path = os.path.join(base_dir, structure, str(num))
 	create_dirs_results(base_path)
 	p_bar_structures = tqdm.trange(num_structures)
 	start_time = time.time()
@@ -370,7 +430,7 @@ def light_env_learning(base_dir="results", structure="one_to_one", num=5,
 		# 	last_beliefs[key] = mean_vectors[-1][-1]
 		# x_axis = np.arange(len(mean_vectors[0]))
 		# plot_measures(x_axis, mean_vectors, std_dev_vectors, labels, "{}/{}/all_lights_struct_{}_exp_{}_rounds_{}".format(base_dir, structure, s, experiments, rounds), legend=False)
-def basic_model_learning():
+def basic_model_learning(base_path="results/disease-treatment-best-action", experiments=10, rounds=50):
 	DG = nx.DiGraph([("Reaction", "Lives"), ("Treatment", "Reaction"), ("Treatment", "Lives"), ("Disease", "Lives")])
 	causal_order = list(nx.topological_sort(DG))
 	# invalid_edges = [("Disease", "Treatment")]
@@ -385,12 +445,14 @@ def basic_model_learning():
 		"variable": COMPLETE_MODEL.get_target_variable(),
 		"value" : target_value
 	}
-
-	experiments = 10
+	g_truth = {e: 1 for e in DG.edges}
+	n_exploration_steps = 1
 	global_results = dict()
-	rounds = 50
-	n_exploration_steps = 10
 	for i in range(experiments):
+		start_time = time.time()
+		base_experiment_filename = f"disease-treatment-run-{i}-rounds{rounds}"
+		results_data = dict()
+		local_exp_results = dict()
 		data = explore_and_generate_data(nature, intervention_vars, n_steps=n_exploration_steps)
 		df = pd.DataFrame.from_dict(data)
 		connection_tables = create_pij(variables, causal_order, invalid_edges)
@@ -401,15 +463,21 @@ def basic_model_learning():
 		unknown_model = BaseModel('configs/incomplete_params.json')
 		unknown_model.reset(approx_model, ebunch, nodes)
 		unknown_model.show_graph()
-		# agent = HalfBlindAgent(nature, unknown_model)
-
-		connection_probas = training(
-			variables, rounds, connection_tables, data, unknown_model, nature)
-		print_dict(connection_tables)
+		connection_probas, rewards = training(
+			variables, rounds, connection_tables, data, unknown_model, nature, target)
 		for key in connection_probas:
 			if key not in global_results:
 				global_results[key] = []
 			global_results[key].append(connection_probas[key])
+			local_exp_results[key] = connection_probas[key]
+		results_data[f"gt_{i}"] = g_truth
+		results_data[f"beliefs_{i}"] = local_exp_results
+		results_data[f"training_time_{i}"] = time.time() - start_time
+		results_data[f"rewards_{i}"] = rewards
+		dict_filename = os.path.join(
+			base_path, "mats", base_experiment_filename + ".pickle")
+		with open(dict_filename, "wb") as handle:
+			pickle.dump(results_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 	labels = []
 	mean_vectors = []
 	std_dev_vectors = []
@@ -420,7 +488,7 @@ def basic_model_learning():
 		print("{} {} {}".format(key, mean_vectors[-1][-1], std_dev_vectors[-1][-1]))
 	x_axis = np.arange(len(mean_vectors[0]))
 	plot_measures(x_axis, mean_vectors, std_dev_vectors, labels,
-	              "results/disease-treatment/connection_beliefs_exp_{}_rounds_{}_{}".format(experiments, rounds, intervention_vars))
+	              "results/disease-treatment-best-action/connection_beliefs_exp_{}_rounds_{}_{}".format(experiments, rounds, intervention_vars))
 	# for i in range(len(mean_vectors)):
 	# 	plot_measures(x_axis, [mean_vectors[i]], [std_dev_vectors[i]], [labels[i]], "connection_beliefs_{}_exp_{}_rounds_{}_{}".format(labels[i], experiments, rounds, intervention_vars))
 	
@@ -429,10 +497,11 @@ if __name__ == '__main__':
 	# for n in [5, 7, 9]:
 	# 	for struct in ["one_to_one", "one_to_many", "many_to_one"]:
 	# 		print(n, struct)
-	# 		light_env_learning(structure=struct, l=20, num_structures=10, rounds=50, num=n)
+	# 		light_env_learning(base_dir="results/light-switches-best-action", structure=struct, l=20,
+	# 		                   num_structures=1, rounds=100, num=n)
 	# 		break
 	# 	break
-	basic_model_learning()
+	basic_model_learning(experiments=10)
 
 
 

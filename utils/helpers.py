@@ -7,6 +7,12 @@ import numpy as np
 
 from utils.vis_utils import plot_measures
 
+def powerset(n):
+    powerset = []
+    for i in range(1 << n):
+        powerset.append(tuple([int(_) for _ in np.binary_repr(i, width=n)]))
+    return powerset
+
 def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
 	"""
 	Checa si dos valores reales son iguales.
