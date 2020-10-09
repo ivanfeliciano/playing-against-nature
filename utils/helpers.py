@@ -5,7 +5,7 @@ import pickle
 import numpy as np
 
 
-from utils.vis_utils import plot_measures
+from utils.vis_utils import plot_measures, plot_heatmap
 
 def powerset(n):
     powerset = []
@@ -122,3 +122,37 @@ def create_dirs_results(base_dir):
 		if not os.path.exists(p):
 			os.makedirs(p)
 
+def get_current_eps(epsilon, decay=0.9, min_eps=0.01):
+	"""
+	Calcula un nuevo valor para la tasa de exploración.
+	El decremento es exponencial.
+	"""
+	return max(epsilon * decay, min_eps)
+
+def get_current_eps_linear_decay(epsilon, n_steps, step, min_eps=0.01, max_eps=1.0):
+	a = -float(max_eps - min_eps) / float(n_steps)
+	b = float(max_eps)
+	return max(min_eps, a * float(step) + b)
+
+def beliefs_to_mat(data, index, n):
+	gt = data[f"gt_{index}"]
+	beliefs = data[f"beliefs_{index}"]
+	gt_mat = np.zeros((n + 1, n))
+	beliefs_mat = np.zeros((n + 1, n))
+	for pair in gt:
+		i = int(pair[0].strip().split("_")[1])
+		j = int(pair[1].strip().split("_")[1])
+		gt_mat[i][j] = gt[pair]
+	for pair in beliefs:
+		values = np.squeeze(beliefs[pair])
+		i = int(pair[0].strip().split("_")[1])
+		j = int(pair[1].strip().split("_")[1])
+		beliefs_mat[i][j] = values[-1]
+	return gt_mat, beliefs_mat
+if __name__ == "__main__":
+	path = "/home/ivan/Documentos/playing-against-nature/results/light-switches/many_to_one/9/mats/light_env_struct_many_to_one_2.pickle"
+	index = 1
+	data = read_dict_from_pickle(path)
+	gt, beliefs = beliefs_to_mat(data, index, 9)
+	plot_heatmap(gt, "gt_heatmap")
+	plot_heatmap(beliefs, "beliefs_heatmap")

@@ -1,4 +1,6 @@
+import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import numpy as np
 
 COLOR_CODES = {
@@ -42,7 +44,7 @@ def plot_measures(x_axis, mean_vecs, std_dev_vectors, labels, filename, color=No
 	# fig, ax1 = plt.subplots()
 	# ax1.set_xlabel('Episodios')
 	# ax1.set_ylabel('Recompensa promedio')
-	plt.ylim(0, 1)
+	# plt.ylim(0, 1)
 	for i in range(len(mean_vecs)):
 		plt.plot(x_axis, mean_vecs[i], label=labels[i], marker=".")
 		plt.fill_between(x_axis, mean_vecs[i] - std_dev_vectors[i], mean_vecs[i] + std_dev_vectors[i],\
@@ -59,3 +61,16 @@ def plot_probabilities(connection_probas, plot_name="connection_probs"):
 	plt.legend()
 	plt.savefig("{}.pdf".format(plot_name))
 	plt.show()
+
+
+def plot_heatmap(matrix, filename="heatmap"):
+	"""
+	docstring
+	"""
+	ax = sns.heatmap(matrix, cmap=cm.gray, cbar=False,
+	                 square=True, linewidths=0.0, xticklabels=False,
+                  yticklabels=False)
+	ax.set_ylabel('')
+	ax.set_xlabel('')
+	plt.savefig("{}.pdf".format(filename), bbox_inches='tight')
+	plt.close()
