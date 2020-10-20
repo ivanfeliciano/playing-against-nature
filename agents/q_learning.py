@@ -1,8 +1,9 @@
+import pickle
 import logging
 import numpy as np
 
 from agents.core import Agent
-from utils.helpers import powerset
+from utils.helpers import powerset, get_current_eps, get_current_eps_linear_decay
 from utils.light_env_utils import obs_to_tuple
 from env.light_env import LightEnv
 
@@ -92,7 +93,7 @@ class QLearning(Agent):
 	"""
 	Q learning para un bandido con una sola acción.
 	"""
-	def __init__(self, nature, epsilon):
+	def __init__(self, nature, epsilon=1.0):
 		super().__init__(nature)
 		self.epsilon = epsilon
 		self.action_variable = self.nature.model.get_intervention_variables()
@@ -105,16 +106,18 @@ class QLearning(Agent):
 		self.k[action] += 1
 		self.Q[action] += (1. / self.k[action]) * (reward - self.Q[action])
 	
-	def make_decision(self):
+	def make_decision(self, i=0, rounds=0):
 		r = np.random.random()
+		self.epsilon = get_current_eps_linear_decay(self.epsilon, rounds, i)
 		if r < self.epsilon:
 			return np.random.randint(len(self.action_values))
-		action = np.random.choice(np.flatnonzero(self.Q == self.Q.max()))
+		else:
+			action = np.random.choice(np.flatnonzero(self.Q == self.Q.max()))
 		return action
 
 	def training(self, rounds):
 		for i in range(rounds):
-			action = self.make_decision()
+			action = self.make_decision(i + 1, rounds)
 			state = self.nature.action_simulator(self.action_variable, [action])
 			reward = state[self.target]
 			self.update_q(action, reward)
@@ -130,19 +133,24 @@ if __name__ == "__main__":
 						filemode='w', level=logging.INFO)
 	model = BaseModel('configs/model_parameters.json')
 	nature = TrueCausalModel(model)
-	rounds = 100
-	qlearning_agent = QLearning(nature, 0.3)
-	qlearning_agent.training(rounds)
-	print(qlearning_agent.rewards_per_round)
-	env = LightEnv()
-	env.keep_struct = False
-	env.reset()
-	env.keep_struct = True
-	episodes = 100
-	eps_policy = EpsilonGreedy(1, 0.1, 0.1, 1)
-	vanilla_q_learning = QLearningLightsSwitches(env, eps_policy, episodes=episodes, mod_episode=5)
-	vanilla_q_learning.train()
-	for i in range(len(vanilla_q_learning.avg_reward)):
-		print(i, vanilla_q_learning.avg_reward[i])
+	rounds = 50
+	for i in range(10):
+		dict_filename = f"results/qlearning-disease-linear/mats/qlearning-disease_{i}"
+		rewards_dict = dict()
+		qlearning_agent = QLearning(nature)
+		qlearning_agent.training(rounds)
+		rewards_dict[f"rewards_{i}"] = qlearning_agent.rewards_per_round
+		with open(dict_filename, "wb") as handle:
+			pickle.dump(rewards_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+	# env = LightEnv()
+	# env.keep_struct = False
+	# env.reset()
+	# env.keep_struct = True
+	# episodes = 100
+	# eps_policy = EpsilonGreedy(1, 0.1, 0.1, 1)
+	# vanilla_q_learning = QLearningLightsSwitches(env, eps_policy, episodes=episodes, mod_episode=5)
+	# vanilla_q_learning.train()
+	# for i in range(len(vanilla_q_learning.avg_reward)):
+	# 	print(i, vanilla_q_learning.avg_reward[i])
 	
 	

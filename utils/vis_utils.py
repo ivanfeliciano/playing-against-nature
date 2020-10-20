@@ -63,14 +63,17 @@ def plot_probabilities(connection_probas, plot_name="connection_probs"):
 	plt.show()
 
 
-def plot_heatmap(matrix, filename="heatmap"):
+def plot_heatmaps(parameter_list):
 	"""
 	docstring
 	"""
-	ax = sns.heatmap(matrix, cmap=cm.gray, cbar=False,
-	                 square=True, linewidths=0.0, xticklabels=False,
-                  yticklabels=False)
-	ax.set_ylabel('')
-	ax.set_xlabel('')
-	plt.savefig("{}.pdf".format(filename), bbox_inches='tight')
-	plt.close()
+	pass
+
+def add_heatmap(matrix, ax, filename="heatmap"):
+	"""
+	docstring
+	"""
+	sns.heatmap(matrix, vmin=0.0, vmax=1.0,cmap=cm.gray, cbar=False, linewidths=0.0, xticklabels=False,
+                  yticklabels=False, ax=ax)
+	# plt.savefig("{}.png".format(filename), bbox_inches='tight')
+	# plt.close()

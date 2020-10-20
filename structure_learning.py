@@ -265,10 +265,15 @@ def training(variables, rounds, connection_tables, data, unknown_model, nature, 
 	local_data = deepcopy(data)
 	df = pd.DataFrame.from_dict(local_data)
 	pbar = tqdm.trange(rounds)
-	rewards = []
+	rewards = [0]
+	epsilon = 1.0
 	for rnd in pbar:
-		pbar.set_description("Training rounds")
-		if rnd < (rounds * exploration_rate):
+		r = np.random.rand()
+		# best action
+		epsilon = get_current_eps(epsilon, decay=0.9)
+		# epsilon = get_current_eps_linear_decay(epsilon, rounds, rnd + 1)
+		pbar.set_description(f"Training rounds epsilon = {epsilon} ")
+		if r < epsilon:
 			idx_intervention_var = np.random.randint(len(intervention_vars))
 			action = (intervention_vars[idx_intervention_var], np.random.randint(2))
 		else:
@@ -305,63 +310,63 @@ def training_ligh_env_learning(variables, rounds, connection_tables, data_on, da
 		env.reset()
 		episode_reward = 0
 		rewards_per_episode = []
-		# while not done:
-		steps += 1
-		targets = get_targets(env)
-		# print(f"State : {env._get_obs()[:env.num]}")
-		# print(f"Goal : {env.goal}")
-		# print(f"Targets : {targets}")
-		# if len(targets) and rnd > rounds * 0.95:
-		# 	target_name = random.choice(list(targets.keys()))
-		# 	target_value = targets[target_name]
-		# 	target = dict(variable=target_name, value=target_value)
-		# 	if target_value == 1:
-		# 		action = get_best_action(unknown_model_on, target, actions)
-		# 	else:
-		# 		action = get_best_action(unknown_model_off, target, actions)
-		# else:
-		action_idx = env.action_space.sample()
-		action = ("cause_{}".format(action_idx),)
-		# print(f"Action : {action[0]}")
-		nature_response = action_simulator(env, action[0])
-		done = nature_response.pop("done", None)
-		reward = nature_response.pop("reward", None)
-		episode_reward += reward
-		# print(f"Reward : {reward}")
-		change_to = nature_response.pop("change_to", None)
-		if change_to == "on":
-			connection_tables = update_connection_beliefs(
-				unknown_model_on, connection_tables, df_on, nature_response)
-		if change_to == "off":
-			connection_tables = update_connection_beliefs(
-				unknown_model_off, connection_tables, df_off, nature_response)
-		else:
-			if np.random.rand() < 0.5:
-				connection_tables = update_connection_beliefs(
-					unknown_model_off, connection_tables, df_on, nature_response)
+		while not done:
+			steps += 1
+			targets = get_targets(env)
+			# print(f"State : {env._get_obs()[:env.num]}")
+			# print(f"Goal : {env.goal}")
+			# print(f"Targets : {targets}")
+			if len(targets) and rnd > rounds * 0.5:
+				target_name = random.choice(list(targets.keys()))
+				target_value = targets[target_name]
+				target = dict(variable=target_name, value=target_value)
+				if target_value == 1:
+					action = get_best_action(unknown_model_on, target, actions)
+				else:
+					action = get_best_action(unknown_model_off, target, actions)
 			else:
+				action_idx = env.action_space.sample()
+				action = ("cause_{}".format(action_idx),)
+			# print(f"Action : {action[0]}")
+			nature_response = action_simulator(env, action[0])
+			done = nature_response.pop("done", None)
+			reward = nature_response.pop("reward", None)
+			episode_reward += reward
+			# print(f"Reward : {reward}")
+			change_to = nature_response.pop("change_to", None)
+			if change_to == "on":
 				connection_tables = update_connection_beliefs(
-					unknown_model_on, connection_tables, df_off, nature_response)
-		update_prob_measures(connection_probas, connection_tables)
-		adj_list = create_graph_from_beliefs(variables, connection_tables)
-		ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
-		if change_to == "on" or change_to == "nothing":
-			for k in nature_response:
-				local_data_on[k].append(nature_response[k])
-			df_on = pd.DataFrame.from_dict(local_data_on)
-			approx_model = generate_approx_model_from_graph(ebunch, nodes, df_on)
-			unknown_model_on.reset(approx_model, ebunch, nodes)
-		if change_to == "off" or change_to == "nothing":
-			for k in nature_response:
-				local_data_off[k].append(nature_response[k])
-			df_off = pd.DataFrame.from_dict(local_data_off)
-			approx_model = generate_approx_model_from_graph(ebunch, nodes, df_off)
-			unknown_model_off.reset(approx_model, ebunch, nodes)
-		# rewards_per_episode.append(episode_reward)
-		# if rnd == 0 or (rnd + 1) % mod_episode == 0:
-		# 	rewards_per_block.append(np.mean(rewards_per_episode))
-	# for i in range(len(rewards_per_block)):
-	# 	print(i, rewards_per_block[i])
+					unknown_model_on, connection_tables, df_on, nature_response)
+			if change_to == "off":
+				connection_tables = update_connection_beliefs(
+					unknown_model_off, connection_tables, df_off, nature_response)
+			else:
+				if np.random.rand() < 0.5:
+					connection_tables = update_connection_beliefs(
+						unknown_model_off, connection_tables, df_on, nature_response)
+				else:
+					connection_tables = update_connection_beliefs(
+						unknown_model_on, connection_tables, df_off, nature_response)
+			update_prob_measures(connection_probas, connection_tables)
+			adj_list = create_graph_from_beliefs(variables, connection_tables)
+			ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
+			if change_to == "on" or change_to == "nothing":
+				for k in nature_response:
+					local_data_on[k].append(nature_response[k])
+				df_on = pd.DataFrame.from_dict(local_data_on)
+				approx_model = generate_approx_model_from_graph(ebunch, nodes, df_on)
+				unknown_model_on.reset(approx_model, ebunch, nodes)
+			if change_to == "off" or change_to == "nothing":
+				for k in nature_response:
+					local_data_off[k].append(nature_response[k])
+				df_off = pd.DataFrame.from_dict(local_data_off)
+				approx_model = generate_approx_model_from_graph(ebunch, nodes, df_off)
+				unknown_model_off.reset(approx_model, ebunch, nodes)
+		rewards_per_episode.append(episode_reward)
+		if rnd == 0 or (rnd + 1) % mod_episode == 0:
+			rewards_per_block.append(np.mean(rewards_per_episode))
+	for i in range(len(rewards_per_block)):
+		print(i, rewards_per_block[i])
 	return connection_probas
 
 

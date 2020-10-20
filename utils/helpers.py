@@ -5,7 +5,7 @@ import pickle
 import numpy as np
 
 
-from utils.vis_utils import plot_measures, plot_heatmap
+from utils.vis_utils import *
 
 def powerset(n):
     powerset = []
@@ -134,9 +134,18 @@ def get_current_eps_linear_decay(epsilon, n_steps, step, min_eps=0.01, max_eps=1
 	b = float(max_eps)
 	return max(min_eps, a * float(step) + b)
 
-def beliefs_to_mat(data, index, n):
-	gt = data[f"gt_{index}"]
-	beliefs = data[f"beliefs_{index}"]
+def get_struct_index(data):
+	bel_key = ""
+	for k in data:
+		if k.startswith("beliefs"):
+			bel_key = k
+			break
+	gt_key = f"gt_{bel_key.strip().split('_')[1]}"
+	return bel_key, gt_key
+def beliefs_to_mat(data, n, timestep=-1):
+	beliefs_k, gt_k = get_struct_index(data)
+	gt = data[gt_k]
+	beliefs = data[beliefs_k]
 	gt_mat = np.zeros((n + 1, n))
 	beliefs_mat = np.zeros((n + 1, n))
 	for pair in gt:
@@ -147,12 +156,11 @@ def beliefs_to_mat(data, index, n):
 		values = np.squeeze(beliefs[pair])
 		i = int(pair[0].strip().split("_")[1])
 		j = int(pair[1].strip().split("_")[1])
-		beliefs_mat[i][j] = values[-1]
+		beliefs_mat[i][j] = values[timestep]
 	return gt_mat, beliefs_mat
 if __name__ == "__main__":
-	path = "/home/ivan/Documentos/playing-against-nature/results/light-switches/many_to_one/9/mats/light_env_struct_many_to_one_2.pickle"
-	index = 1
+	path = "/home/ivan/Documentos/playing-against-nature/results/light-switches/many_to_one/5/mats/light_env_struct_many_to_one_2.pickle"
 	data = read_dict_from_pickle(path)
-	gt, beliefs = beliefs_to_mat(data, index, 9)
+	gt, beliefs = beliefs_to_mat(data, 5)
 	plot_heatmap(gt, "gt_heatmap")
 	plot_heatmap(beliefs, "beliefs_heatmap")

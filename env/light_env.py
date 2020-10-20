@@ -198,7 +198,7 @@ class LightEnv(gym.GoalEnv):
         # self.state = np.zeros((self.num))
         self.state = np.random.randint(2, size=self.num).astype(float)
         self.eps += 1
-        # self.goal = self._sample_goal()
+        self.goal = self._sample_goal()
         # print("Goal {}".format(self.goal))
 
         obs = self._get_obs()
