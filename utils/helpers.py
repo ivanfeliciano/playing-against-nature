@@ -3,9 +3,14 @@ import math
 import pickle
 
 import numpy as np
-
+import networkx as nx
 
 from utils.vis_utils import *
+
+def is_ebunch_dag(ebunch):
+	G = nx.DiGraph()
+	G.add_edges_from(ebunch)
+	return nx.is_directed_acyclic_graph(G)
 
 def powerset(n):
     powerset = []
@@ -146,16 +151,24 @@ def beliefs_to_mat(data, n, timestep=-1):
 	beliefs_k, gt_k = get_struct_index(data)
 	gt = data[gt_k]
 	beliefs = data[beliefs_k]
-	gt_mat = np.zeros((n + 1, n))
-	beliefs_mat = np.zeros((n + 1, n))
+	gt_mat = np.zeros((2 * n + 1, 2 * n + 1))
+	beliefs_mat = np.zeros((2 * n + 1, 2 * n + 1))
 	for pair in gt:
 		i = int(pair[0].strip().split("_")[1])
 		j = int(pair[1].strip().split("_")[1])
-		gt_mat[i][j] = gt[pair]
+		gt_mat[i][n + 1 + j] = gt[pair]
 	for pair in beliefs:
 		values = np.squeeze(beliefs[pair])
-		i = int(pair[0].strip().split("_")[1])
-		j = int(pair[1].strip().split("_")[1])
+		cause_key = pair[0].strip().split("_")[0]
+		effect_key = pair[1].strip().split("_")[0]
+		if cause_key == "cause":
+			i = int(pair[0].strip().split("_")[1])
+		else:
+			i = int(pair[0].strip().split("_")[1]) + n + 1
+		if effect_key == "cause":
+			j = int(pair[1].strip().split("_")[1])
+		else:
+			j = int(pair[1].strip().split("_")[1]) + n + 1
 		beliefs_mat[i][j] = values[timestep]
 	return gt_mat, beliefs_mat
 if __name__ == "__main__":

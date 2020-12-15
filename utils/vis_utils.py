@@ -1,5 +1,7 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
+import matplotlib.pylab as pl
 import matplotlib.cm as cm
 import numpy as np
 
@@ -40,18 +42,28 @@ def plot_rewards_comparison(results, rounds, labels, _id=0):
 	plt.close()
 
 
-def plot_measures(x_axis, mean_vecs, std_dev_vectors, labels, filename, color=None, legend=True):
+def plot_measures(x_axis, mean_vecs, std_dev_vectors, labels, filename, x_label="", y_label="",color=None, legend=True, outside_legend=False,legend_title="Edges"):
 	# fig, ax1 = plt.subplots()
 	# ax1.set_xlabel('Episodios')
 	# ax1.set_ylabel('Recompensa promedio')
 	# plt.ylim(0, 1)
+	n = len(mean_vecs)
+	colors = pl.cm.jet(np.linspace(0, 1, n))
+	fontP = FontProperties()
+	fontP.set_size('small')
+	handles = []
+	plt.xlabel(x_label)
+	plt.ylabel(y_label)
 	for i in range(len(mean_vecs)):
-		plt.plot(x_axis, mean_vecs[i], label=labels[i], marker=".")
+		handle, = plt.plot(x_axis, mean_vecs[i], label=labels[i], color=colors[i])
 		plt.fill_between(x_axis, mean_vecs[i] - std_dev_vectors[i], mean_vecs[i] + std_dev_vectors[i],\
-						alpha=0.2)
-	if legend:
+						alpha=0.2, color=colors[i])
+		handles.append(handle)
+	if legend and outside_legend:
+		plt.legend(handles=handles, title=legend_title, bbox_to_anchor=(1.05, 1), loc='upper left', prop=fontP)
+	else:
 		plt.legend(loc='best')
-	plt.savefig("{}.pdf".format(filename), bbox_inches='tight')
+	plt.savefig("{}.png".format(filename), bbox_inches='tight')
 	plt.close()
 
 
@@ -63,11 +75,16 @@ def plot_probabilities(connection_probas, plot_name="connection_probs"):
 	plt.show()
 
 
-def plot_heatmaps(parameter_list):
+def plot_heatmaps(matrix, filename="heatmap"):
 	"""
 	docstring
 	"""
-	pass
+	figure = plt.gcf()
+	figure.set_size_inches(5, 5)
+	sns.heatmap(matrix, vmin=0.0, vmax=1.0, cmap=cm.gray, cbar=False, linewidths=0.0, xticklabels=False,
+             yticklabels=False, square=True)
+	plt.savefig("{}.png".format(filename), bbox_inches='tight')
+	plt.close()
 
 def add_heatmap(matrix, ax, filename="heatmap"):
 	"""

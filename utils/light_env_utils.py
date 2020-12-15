@@ -1,8 +1,11 @@
 import logging
 import itertools
 
+import numpy as np
+
 from model import BaseModel
 from env.light_env import LightEnv
+from utils.helpers import powerset
 
 
 def obs_to_tuple(obs, n):
@@ -152,6 +155,14 @@ def get_targets(env):
             targets[f"effect_{i}"] = int(goal[i])
     return targets
 
+def get_good_action(env, parents):
+    targets, vals = check_diff_and_get_target_variables(env)
+    if len(targets) > 0:
+        target = np.random.choice(targets)
+        if target in parents:
+            return np.random.choice(parents[target])
+    return f"cause_{env.num}"
+
 
 
 def action_simulator(env, chosen_action):
@@ -177,6 +188,25 @@ def action_simulator(env, chosen_action):
             response["change_to"] = "off"
         
     return response
+
+
+def init_q_table(env):
+    all_states = powerset(env.num)
+    return {
+        state:  np.zeros(env.num + 1) for state in all_states
+    }
+
+def parents_from_ebunch(ebunch):
+    """
+    Obtiene un diccionario donde las llaves son nodos
+    y los valores son listas con los padres de cada nodo.
+    """
+    parents = dict()
+    for edge in ebunch:
+        if not edge[1] in parents:
+            parents[edge[1]] = []
+        parents[edge[1]].append(edge[0])
+    return parents
 
 if __name__ == "__main__":
     n = 5
