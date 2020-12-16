@@ -9,10 +9,6 @@
       "Lives"
     ],
     [
-      "Treatment",
-      "Reaction"
-    ],
-    [
       "Reaction",
       "Lives"
     ]
@@ -36,11 +32,8 @@
       "variable": "Reaction",
       "variable_card" : 2,
       "values" : [
-        [0.7, 0.4],
-        [0.3, 0.6]
-      ],
-      "evidence_card" : [2],
-      "evidence" : ["Treatment"]
+        [0.5, 0.5]
+      ]
     },
     {
       "variable": "Lives",
@@ -59,13 +52,10 @@
   ],
   "target": "Lives",
   "nature_variables": [
-    "Disease",
-    "Treatment"
+    "Treatment", 
+    "Disease"
   ],
   "interventions" : [
-    "Treatment",
-    "Disease",
-    "Lives",
     "Reaction"
   ]
 }

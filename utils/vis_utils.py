@@ -48,22 +48,25 @@ def plot_measures(x_axis, mean_vecs, std_dev_vectors, labels, filename, x_label=
 	# ax1.set_ylabel('Recompensa promedio')
 	# plt.ylim(0, 1)
 	n = len(mean_vecs)
-	colors = pl.cm.jet(np.linspace(0, 1, n))
+	# colors = pl.cm.jet(np.linspace(0, 1, n))
 	fontP = FontProperties()
 	fontP.set_size('small')
 	handles = []
 	plt.xlabel(x_label)
 	plt.ylabel(y_label)
 	for i in range(len(mean_vecs)):
-		handle, = plt.plot(x_axis, mean_vecs[i], label=labels[i], color=colors[i])
-		plt.fill_between(x_axis, mean_vecs[i] - std_dev_vectors[i], mean_vecs[i] + std_dev_vectors[i],\
-						alpha=0.2, color=colors[i])
+		# handle, = plt.plot(x_axis, mean_vecs[i], label=labels[i], color=colors[i])
+		handle, = plt.plot(x_axis, mean_vecs[i], label=labels[i])
+		# plt.fill_between(x_axis, mean_vecs[i] - std_dev_vectors[i], mean_vecs[i] + std_dev_vectors[i],\
+		# 				alpha=0.2, color=colors[i])
+		plt.fill_between(x_axis, mean_vecs[i] - std_dev_vectors[i], mean_vecs[i] + std_dev_vectors[i],
+                   alpha=0.2)
 		handles.append(handle)
 	if legend and outside_legend:
 		plt.legend(handles=handles, title=legend_title, bbox_to_anchor=(1.05, 1), loc='upper left', prop=fontP)
 	else:
 		plt.legend(loc='best')
-	plt.savefig("{}.png".format(filename), bbox_inches='tight')
+	plt.savefig("{}.pdf".format(filename), bbox_inches='tight')
 	plt.close()
 
 

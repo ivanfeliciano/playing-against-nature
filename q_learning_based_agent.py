@@ -46,16 +46,16 @@ class QLearningAgent(object):
 
 if __name__ == "__main__":
     num = 5
-    simulations = 8
+    simulations = 5
     episodes = 500
-    structure = "one_to_one"
-    env = LightEnv(num=num)
-    for s in range(simulations):
-        env.keep_struct = False
-        env.reset()
-        env.keep_struct = True
-        policy = Policy(linear=False)
-        q_agent = QLearningAgent(env, policy, episodes=episodes)
-        rewards = q_agent.train(
-            f"results/light-switches-q-learning-exp-decay/{structure}/{num}/mats/light_env_struct_{structure}_{s}", s=s)
-        print(rewards)
+    structures = ["one_to_one", "one_to_many", "many_to_one"]
+    for structure in structures:
+        env = LightEnv(num=num, structure=structure)
+        for s in range(simulations):
+            env.keep_struct = False
+            env.reset()
+            env.keep_struct = True
+            policy = Policy(linear=False)
+            q_agent = QLearningAgent(env, policy, episodes=episodes)
+            rewards = q_agent.train(
+                f"results/light-switches-q-learning-exp-decay/{structure}/{num}/mats/light_env_struct_{structure}_{s}", s=s)

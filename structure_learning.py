@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import os
+import sys
 import time
 import pickle
 import itertools
@@ -218,8 +219,9 @@ def update_connection_beliefs(model, connection_tables, df, nature_response, use
 		# connection_tables[pair] = (connection_tables[pair] * p_sub_dict[pair]) / (p_sub_dict[pair] * connection_tables[pair] + p_complement_dict[pair] * (1 - connection_tables[pair]))
 		if p_complement_dict.get(pair) != None and p_sub_dict.get(pair) != None:
 			connection_tables[pair] = (connection_tables[pair] * p_sub_dict[pair]) / (p_sub_dict[pair] * connection_tables[pair] + p_complement_dict[pair] * (1 - connection_tables[pair]))
-		# default_value = 0.00001
-		# connection_tables[pair] = (connection_tables[pair] * p_sub_dict.get(pair, default_value)) / (p_sub_dict.get(pair, default_value) * connection_tables[pair] + p_complement_dict.get(pair, default_value) * (1 - connection_tables[pair]))
+		# else:
+		# 	default_value = 0.00001
+		# 	connection_tables[pair] = (connection_tables[pair] * p_sub_dict.get(pair, default_value)) / (p_sub_dict.get(pair, default_value) * connection_tables[pair] + p_complement_dict.get(pair, default_value) * (1 - connection_tables[pair]))
 	return connection_tables
 
 def update_connection_beliefs_seq(model, connection_tables, df, nature_response):
@@ -267,7 +269,7 @@ def update_connection_beliefs_seq(model, connection_tables, df, nature_response)
 	return connection_tables
 
 def training(variables, rounds, connection_tables, data, unknown_model, nature, target, exploration_rate=1):
-	intervention_vars = nature.model.get_intervention_variables()
+	intervention_vars = nature[0].model.get_intervention_variables()
 	actions = {action : [0, 1] for action in intervention_vars}
 	connection_probas = dict()
 	update_prob_measures(connection_probas, connection_tables)
@@ -285,14 +287,19 @@ def training(variables, rounds, connection_tables, data, unknown_model, nature, 
 		if r <= epsilon:
 			idx_intervention_var = np.random.randint(len(intervention_vars))
 			action = (intervention_vars[idx_intervention_var], np.random.randint(2))
-			print(action)
+			# print(action)
 		else:
 			action = get_best_action(unknown_model, target, actions)
 		# print(f"Action: {action}")
-		nature_response = nature.action_simulator([action[0]], [action[1]])
+		if action[0] == "Reaction":
+			nature_response = nature[1].action_simulator([action[0]], [action[1]])
+		if action[0] == "Lives":
+			nature_response = nature[2].action_simulator([action[0]], [action[1]])
+		else:
+			nature_response = nature[0].action_simulator([action[0]], [action[1]])
 		reward = nature_response[target["variable"]]
 		rewards.append(reward)
-		connection_tables = update_connection_beliefs(unknown_model, connection_tables, df, nature_response)
+		connection_tables = update_connection_beliefs(unknown_model, connection_tables, df, nature_response, use_causal_order=False)
 		update_prob_measures(connection_probas, connection_tables)
 		for k in nature_response:
 			local_data[k].append(nature_response[k])
@@ -445,7 +452,12 @@ def basic_model_learning(base_path="results/disease-treatment-best-action", expe
 	invalid_edges = []
 
 	COMPLETE_MODEL = BaseModel('configs/model_parameters.json')
+	MODEL_REACTION = BaseModel('configs/model_parameters_reaction.json')
+	MODEL_LIVES = BaseModel('configs/model_parameters_lives.json')
 	nature = TrueCausalModel(COMPLETE_MODEL)
+	nature_reaction = TrueCausalModel(MODEL_REACTION)
+	nature_lives = TrueCausalModel(MODEL_LIVES)
+	nature_arr = [nature, nature_reaction, nature_lives]
 	variables = sorted(["Treatment", "Reaction", "Disease", "Lives"])
 	intervention_vars = COMPLETE_MODEL.get_intervention_variables()
 	target_value = 1
@@ -463,7 +475,7 @@ def basic_model_learning(base_path="results/disease-treatment-best-action", expe
 		local_exp_results = dict()
 		data = explore_and_generate_data(nature, intervention_vars, n_steps=n_exploration_steps)
 		df = pd.DataFrame.from_dict(data)
-		connection_tables = create_pij(variables, causal_order, invalid_edges)
+		connection_tables = create_pij(variables, causal_order, invalid_edges, use_causal_order=False)
 		adj_list = create_graph_from_beliefs_unknown_order(variables, connection_tables)
 		ebunch, nodes = adj_list_to_ebunch_and_nodes(adj_list)
 		approx_model = generate_approx_model_from_graph(ebunch, nodes, df)
@@ -472,7 +484,7 @@ def basic_model_learning(base_path="results/disease-treatment-best-action", expe
 		unknown_model.reset(approx_model, ebunch, nodes)
 		unknown_model.show_graph()
 		connection_probas, rewards = training(
-			variables, rounds, connection_tables, data, unknown_model, nature, target)
+			variables, rounds, connection_tables, data, unknown_model, nature_arr, target)
 		for key in connection_probas:
 			if key not in global_results:
 				global_results[key] = []
@@ -521,13 +533,15 @@ def basic_model_learning(base_path="results/disease-treatment-best-action", expe
 	
 
 if __name__ == '__main__':
-	for n in [5, 7, 9]:
-		for struct in ["one_to_one", "one_to_many", "many_to_one"]:
-			print(n, struct)
-			light_env_learning(base_dir="results/light-switches-learning-and-using", structure=struct, num=n, rounds=500, num_structures=5)
-			# break
-		break
-	# basic_model_learning(base_path="results/disease-treatment-random-action-several-actions", experiments=10, rounds=100, plot_id="shuffle")
+	# for n in [5, 7, 9]:
+	# 	for struct in ["one_to_one", "one_to_many", "many_to_one"]:
+	# 		print(n, struct)
+	# 		light_env_learning(base_dir="results/light-switches-learning-and-using", structure=struct, num=n, rounds=500, num_structures=5)
+	# 		# break
+	# 	break
+	experiments = int(sys.argv[1])
+	rounds = int(sys.argv[2])
+	basic_model_learning(base_path="results/disease-treatment-random-action-several-actions", experiments=experiments, rounds=rounds, plot_id="shuffle")
 
 
 
