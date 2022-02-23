@@ -542,8 +542,3 @@ if __name__ == '__main__':
 	experiments = int(sys.argv[1])
 	rounds = int(sys.argv[2])
 	basic_model_learning(base_path="results/disease-treatment-random-action-several-actions", experiments=experiments, rounds=rounds, plot_id="shuffle")
-
-
-
-
-

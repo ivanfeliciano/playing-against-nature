@@ -117,7 +117,8 @@ class QLearning(Agent):
 
 	def training(self, rounds):
 		for i in range(rounds):
-			action = self.make_decision(i + 1, rounds)
+			action = np.random.randint(len(self.action_values))
+			# action = self.make_decision(i + 1, rounds)
 			state = self.nature.action_simulator(self.action_variable, [action])
 			reward = state[self.target]
 			self.update_q(action, reward)
@@ -133,9 +134,11 @@ if __name__ == "__main__":
 						filemode='w', level=logging.INFO)
 	model = BaseModel('configs/model_parameters.json')
 	nature = TrueCausalModel(model)
+	for cpd in nature.model.pgmodel.get_cpds():
+		print(cpd)
 	rounds = 50
 	for i in range(10):
-		dict_filename = f"results/qlearning-disease-linear/mats/qlearning-disease_{i}"
+		dict_filename = f"results/random-disease/mats/random-disease_{i}"
 		rewards_dict = dict()
 		qlearning_agent = QLearning(nature)
 		qlearning_agent.training(rounds)
