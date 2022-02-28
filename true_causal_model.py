@@ -85,24 +85,37 @@ class TrueCausalModelEnv(TrueCausalModel):
 		return response
 def main():
 	logging.basicConfig(filename="logs/test_nature_light.log", filemode='w', level=logging.INFO)
-	# model = BaseModel('configs/model_parameters.json')
-	# tcm = TrueCausalModel(model)
+	model = BaseModel('configs/model_parameters.json')
+	tcm = TrueCausalModel(model)
+	tcm.model.save_pgm_as_img("gt-graph.png")
+	for cpd in tcm.model.pgmodel.get_cpds():
+		print(cpd)
+	model = BaseModel('configs/model_parameters_reaction.json')
+	tcm = TrueCausalModel(model)
+	tcm.model.save_pgm_as_img("gt-graph-reaction.png")
+	for cpd in tcm.model.pgmodel.get_cpds():
+		print(cpd)
+	model = BaseModel('configs/model_parameters_lives.json')
+	tcm = TrueCausalModel(model)
+	tcm.model.save_pgm_as_img("gt-graph-lives.png")
+	for cpd in tcm.model.pgmodel.get_cpds():
+		print(cpd)
 	# r = tcm.action_simulator(['Tratamiento'], [1])
 	# print(r)
 	# r = tcm.action_simulator(['Tratamiento'], [0])
 	# print(r)
-	from utils.light_env_utils import generate_model_from_env
-	from env.light_env import LightEnv
-	env = LightEnv(structure="one_to_one")
-	env.keep_struct = False
-	env.reset()
-	env.keep_struct = True
-	model = generate_model_from_env(env)
-	nature_light_switch = TrueCausalModelEnv(model)
-	variable = "cause_1"
-	value = 1
-	r = nature_light_switch.action_simulator(env, variable)
-	print(r)
+	# from utils.light_env_utils import generate_model_from_env
+	# from env.light_env import LightEnv
+	# env = LightEnv(structure="one_to_one")
+	# env.keep_struct = False
+	# env.reset()
+	# env.keep_struct = True
+	# model = generate_model_from_env(env)
+	# nature_light_switch = TrueCausalModelEnv(model)
+	# variable = "cause_1"
+	# value = 1
+	# r = nature_light_switch.action_simulator(env, variable)
+	# print(r)
 
 
 if __name__ == '__main__':

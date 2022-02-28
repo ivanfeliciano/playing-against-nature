@@ -139,7 +139,7 @@ def compute_metrics_and_plot_disease_treatment(paths):
 		              comparison_std[0][i], comparison_std[1][i], comparison_std[2][i]], labels=labels, filename=filename, legend=True)
 
 
-def compare_rewards(dirs, labels, filename="reward_comparison"):
+def compare_rewards(dirs, labels, filename="reward_comparison_w_rnd"):
 	"""
 	docstring
 	"""
@@ -199,22 +199,26 @@ def create_grid_of_heatmaps(base_dir_path, structure, nums=[5, 7, 9], bin_size=1
 	plt.savefig("{}.png".format(plot_path), bbox_inches='tight')
 	plt.close()
 
-def plot_performance(rewards_cm, rewards_q, rewards_gt, bin_size=20, episodes=500, labels=["Our proposal", "Q-learning", "Ground truth"], filename="average_reward_comparison"):
+def plot_performance(rewards_cm, rewards_q, rewards_gt, rewards_random, bin_size=20, episodes=500, labels=["Our proposal", "Q-learning", "Ground truth", "Random"], filename="average_reward_comparison"):
 	cm_bin_rewards = []
 	q_bin_rewards = []
 	gt_bin_rewards = []
+	random_bin_rewards = []
 	x_axis = [k + bin_size for k in range(0, episodes, bin_size)]
 	for i in range(len(rewards_cm)):
 		cm_bin_rewards.append(rewards_to_bin_mean(rewards_cm[i], bin_size=bin_size))
 		q_bin_rewards.append(rewards_to_bin_mean(rewards_q[i], bin_size=bin_size))
 		gt_bin_rewards.append(rewards_to_bin_mean(rewards_gt[i], bin_size=bin_size))
+		random_bin_rewards.append(rewards_to_bin_mean(rewards_random[i], bin_size=bin_size))
 	cm_mean = np.mean(cm_bin_rewards, axis=0)
 	cm_std = np.std(cm_bin_rewards, axis=0)
 	gt_mean = np.mean(gt_bin_rewards, axis=0)
 	gt_std = np.std(gt_bin_rewards, axis=0)
 	q_mean = np.mean(q_bin_rewards, axis=0)
-	q_std = np.std(cm_bin_rewards, axis=0)
-	plot_measures(x_axis, [cm_mean, q_mean, gt_mean], [cm_std, q_std, gt_std], labels, filename,
+	q_std = np.std(q_bin_rewards, axis=0)
+	rnd_mean = np.mean(random_bin_rewards, axis=0)
+	rnd_std = np.std(random_bin_rewards, axis=0)
+	plot_measures(x_axis, [cm_mean, q_mean, gt_mean, rnd_mean], [cm_std, q_std, gt_std, rnd_std], labels, filename,
 	              x_label="Episodes", y_label="Average reward")
 
 if __name__ == "__main__":
@@ -259,57 +263,71 @@ if __name__ == "__main__":
 	# 	"Q-learning linear",
 	# 	"Q-learning exp",
 	# ]
-	bin_size = 10
-	cm_rewards_one_to_one = []
-	gt_rewards_one_to_one = []
-	q_rewards_one_to_one = []
-	for i in range(5):
-		data = read_dict_from_pickle(f"results/light-switches-learning-and-using/one_to_one/5/mats/light_env_struct_one_to_one_{i}.pickle")
-		cm_rewards_one_to_one.append(data[f"rewards_{i}"][0])
-		data = read_dict_from_pickle(f"results/light-switches-q-learning-exp-decay/one_to_one/5/mats/light_env_struct_one_to_one_{i}.pickle")
-		q_rewards_one_to_one.append(data[f"rewards_{i}"])
-		data = read_dict_from_pickle(
-			f"results/gt-light-switches-learning-and-using/one_to_one/5/mats/light_env_struct_one_to_one_{i}.pickle")
-		gt_rewards_one_to_one.append(data[f"rewards_{i}"][0])
+	# bin_size = 10
+	# cm_rewards_one_to_one = []
+	# gt_rewards_one_to_one = []
+	# q_rewards_one_to_one = []
+	# rnd_rewards_one_to_one = []
+	# for i in range(5):
+	# 	data = read_dict_from_pickle(f"results/light-switches-learning-and-using/one_to_one/5/mats/light_env_struct_one_to_one_{i}.pickle")
+	# 	cm_rewards_one_to_one.append(data[f"rewards_{i}"][0])
+	# 	data = read_dict_from_pickle(f"results/light-switches-q-learning-exp-decay/one_to_one/5/mats/light_env_struct_one_to_one_{i}.pickle")
+	# 	q_rewards_one_to_one.append(data[f"rewards_{i}"])
+	# 	data = read_dict_from_pickle(
+	# 		f"results/gt-light-switches-learning-and-using/one_to_one/5/mats/light_env_struct_one_to_one_{i}.pickle")
+	# 	gt_rewards_one_to_one.append(data[f"rewards_{i}"][0])
+	# 	data = read_dict_from_pickle(
+	# 		f"results/light-switches-random-learning/one_to_one/5/mats/light_env_struct_one_to_one_{i}.pickle")
+	# 	rnd_rewards_one_to_one.append(data[f"rewards_{i}"])
 
-	title = f"average_rewared_per_episode_bin_{bin_size}_one_to_one"
-	plot_performance(cm_rewards_one_to_one, q_rewards_one_to_one, gt_rewards_one_to_one, bin_size=bin_size, filename=title)
+	# title = f"average_rewared_per_episode_bin_{bin_size}_one_to_one"
+	# plot_performance(cm_rewards_one_to_one, q_rewards_one_to_one, gt_rewards_one_to_one, rnd_rewards_one_to_one, bin_size=bin_size, filename=title)
 
-	cm_rewards_common_cause	 = []
-	q_rewards_common_cause	 = []
-	gt_rewards_common_cause	 = []
-	for i in range(5):
-		data = read_dict_from_pickle(
-		f"results/light-switches-learning-and-using/one_to_many/5/mats/light_env_struct_one_to_many_{i}.pickle")
-		cm_rewards_common_cause.append(data[f"rewards_{i}"][0])
-		data = read_dict_from_pickle(
-			f"results/light-switches-q-learning-exp-decay/one_to_many/5/mats/light_env_struct_one_to_many_{i}.pickle")
-		q_rewards_common_cause.append(data[f"rewards_{i}"])
-		data = read_dict_from_pickle(
-                    f"results/gt-light-switches-learning-and-using/one_to_many/5/mats/light_env_struct_one_to_many_{i}.pickle")
-		gt_rewards_common_cause.append(data[f"rewards_{i}"][0])
+	# cm_rewards_common_cause	 = []
+	# q_rewards_common_cause	 = []
+	# gt_rewards_common_cause	 = []
+	# rnd_rewards_common_cause = []
+	# for i in range(5):
+	# 	data = read_dict_from_pickle(
+	# 	f"results/light-switches-learning-and-using/one_to_many/5/mats/light_env_struct_one_to_many_{i}.pickle")
+	# 	cm_rewards_common_cause.append(data[f"rewards_{i}"][0])
+	# 	data = read_dict_from_pickle(
+	# 		f"results/light-switches-q-learning-exp-decay/one_to_many/5/mats/light_env_struct_one_to_many_{i}.pickle")
+	# 	q_rewards_common_cause.append(data[f"rewards_{i}"])
+	# 	data = read_dict_from_pickle(
+  #                   f"results/gt-light-switches-learning-and-using/one_to_many/5/mats/light_env_struct_one_to_many_{i}.pickle")
+	# 	gt_rewards_common_cause.append(data[f"rewards_{i}"][0])
+	# 	data = read_dict_from_pickle(
+	# 		f"results/light-switches-random-learning/one_to_many/5/mats/light_env_struct_one_to_many_{i}.pickle")
+	# 	rnd_rewards_common_cause.append(data[f"rewards_{i}"])
 
-	title = f"average_rewared_per_episode_bin_{bin_size}_common_cause"
-	plot_performance(cm_rewards_common_cause, q_rewards_common_cause,
-	                 gt_rewards_common_cause,bin_size=bin_size, filename=title)
+
+	# title = f"average_rewared_per_episode_bin_{bin_size}_common_cause"
+	# plot_performance(cm_rewards_common_cause, q_rewards_common_cause,
+	#                  gt_rewards_common_cause, rnd_rewards_common_cause, bin_size=bin_size, filename=title)
 
 
-	cm_rewards_common_effect = []
-	gt_rewards_common_effect = []
-	q_rewards_common_effect = []
-	for i in range(5):
-		data = read_dict_from_pickle(
-		f"results/light-switches-learning-and-using/many_to_one/5/mats/light_env_struct_many_to_one_{i}.pickle")
-		cm_rewards_common_effect.append(data[f"rewards_{i}"][0])
-		data = read_dict_from_pickle(
-			f"results/light-switches-q-learning-exp-decay/many_to_one/5/mats/light_env_struct_many_to_one_{i}.pickle")
-		q_rewards_common_effect.append(data[f"rewards_{i}"])
-		data = read_dict_from_pickle(
-                    f"results/gt-light-switches-learning-and-using/many_to_one/5/mats/light_env_struct_many_to_one_{i}.pickle")
-		gt_rewards_common_effect.append(data[f"rewards_{i}"][0])
+	# cm_rewards_common_effect = []
+	# gt_rewards_common_effect = []
+	# q_rewards_common_effect = []
+	# rnd_rewards_common_effect = []
+	# for i in range(5):
+	# 	data = read_dict_from_pickle(
+	# 	f"results/light-switches-learning-and-using/many_to_one/5/mats/light_env_struct_many_to_one_{i}.pickle")
+	# 	cm_rewards_common_effect.append(data[f"rewards_{i}"][0])
+	# 	data = read_dict_from_pickle(
+	# 		f"results/light-switches-q-learning-exp-decay/many_to_one/5/mats/light_env_struct_many_to_one_{i}.pickle")
+	# 	q_rewards_common_effect.append(data[f"rewards_{i}"])
+	# 	data = read_dict_from_pickle(
+  #                   f"results/gt-light-switches-learning-and-using/many_to_one/5/mats/light_env_struct_many_to_one_{i}.pickle")
+	# 	gt_rewards_common_effect.append(data[f"rewards_{i}"][0])
+	# 	data = read_dict_from_pickle(
+	# 		f"results/light-switches-random-learning/many_to_one/5/mats/light_env_struct_many_to_one_{i}.pickle")
+	# 	rnd_rewards_common_effect.append(data[f"rewards_{i}"])
 
-	title = f"average_rewared_per_episode_bin_{bin_size}_common_effect"
-	plot_performance(cm_rewards_common_effect, q_rewards_common_effect, gt_rewards_common_effect, bin_size=bin_size, filename=title)
+
+	# title = f"average_rewared_per_episode_bin_{bin_size}_common_effect"
+	# plot_performance(cm_rewards_common_effect, q_rewards_common_effect, gt_rewards_common_effect, rnd_rewards_common_effect, bin_size=bin_size, filename=title)
 
 
 	# for i in [1, 10, 20, 25, 30, 50]:
@@ -317,10 +335,10 @@ if __name__ == "__main__":
 	# 	plot_performance(rewards_cm, rewards_q, bin_size=i, filename=title)
 	# compute_metrics_and_plot_disease_treatment(
 	# 	"results/disease-treatment-random-action", "results/disease-treatment-best-action")
-	# dirs = ["results/disease-treatment-linear",
-    #      "results/disease-treatment-exponential", "results/qlearning-disease-linear", "results/qlearning-disease-exponential"]
-	# labels = ["Linear", "Exponential", "Q-learning linear", "Q-learning exponential"]
-	# compare_rewards(dirs, labels)
+	dirs = ["results/disease-treatment-linear",
+         "results/disease-treatment-exponential", "results/qlearning-disease-linear", "results/qlearning-disease-exponential", "results/random-disease"]
+	labels = ["Linear", "Exponential", "Q-learning linear", "Q-learning exponential", "Random"]
+	compare_rewards(dirs, labels)
 	# dirs = ["results/disease-treatment-random-action", "results/disease-treatment-exponential",
     #      "results/disease-treatment-linear"]
 	# compute_metrics_and_plot_disease_treatment(dirs)
