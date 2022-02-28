@@ -18,21 +18,21 @@
       "variable": "Disease",
       "variable_card" : 2,
       "values" : [
-        [0.7, 0.3]
+        [0.7], [0.3]
       ]
     },
     {
       "variable": "Treatment",
       "variable_card" : 2,
       "values" : [
-        [0.5, 0.5]
+        [0.5], [0.5]
       ]
     },
     {
       "variable": "Reaction",
       "variable_card" : 2,
       "values" : [
-        [0.5, 0.5]
+        [0.5], [0.5]
       ]
     },
     {
