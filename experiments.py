@@ -16,6 +16,7 @@ def run_experiments(n_experiments=1, rounds=10, agent_class=None, nature=None,\
                     pgmodel=None, name="agent", target_value=None, plot=True, epsilon=0.3):
     reward_all_experiments = []
     for experiment in range(n_experiments):
+        print(name)
         np.random.seed(experiment)
         if name == "Qlearning":
             agent = agent_class(nature, epsilon)
