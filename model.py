@@ -84,8 +84,8 @@ class BaseModel(object):
 		"""
 		pos = nx.circular_layout(self.digraph)
 		nx.draw(self.digraph, with_labels=True, pos=pos)
-		plt.show()
-		plt.clf()
+		# plt.show()
+		# plt.clf()
 	def init_model(self, ebunch, cpdtables, plot=False, pgm_id='pgm'):
 		"""
 		Creo el PGM usando PGMPY. Por ahora es un modelo Bayesiano. Recibe 
@@ -189,16 +189,16 @@ class BaseModel(object):
 		pos = nx.circular_layout(self.digraph)
 		nx.draw(self.digraph, with_labels=True, pos=pos)
 		plt.savefig(filename)
-		plt.show()
-		plt.clf()
+		# plt.show()
+		# plt.clf()
 	def save_pgm_as_img(self, filename):
 		"""
 		Método auxiliar para guardar el DAG del pgmpy como imagen.
 		"""
 		nx.draw(self.digraph, with_labels=True)
-		plt.show()
+		# plt.show()
 		plt.savefig(filename)
-		plt.clf()
+		# plt.clf()
 	def get_graph_toposort(self):
 		"""
 		Método que regresa una lista con las variables en orden topológico
