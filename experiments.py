@@ -40,9 +40,9 @@ def main():
     parser = argparse.ArgumentParser(description='Run experiments causal agents.')
     parser.add_argument("--config-file", type=str,
                         default="configs/model_parameters.json", help="Path to the configuration files.")
-    parser.add_argument("--experiments", type=int, default=10,
+    parser.add_argument("--experiments", type=int, default=1,
                         help="# of experiments.")
-    parser.add_argument("--rounds", type=int, default=20,
+    parser.add_argument("--rounds", type=int, default=5,
                         help="# of rounds per experiment.")
     parser.add_argument("--target-value", type=int, default=1,
                         help="Desired value for target variable.")

@@ -31,8 +31,11 @@ class TrueCausalModel:
 		response = dict()
 		elements = None
 		probabilities = None
+		print(self.model.get_nature_variables())
 		for nat_var in self.model.get_nature_variables():
 			probabilities = self.model.get_nature_var_prob(nat_var)
+			print(nat_var)
+			print(probabilities)
 			elements = [i for i in range(len(probabilities))]
 			res = np.random.choice(elements, p=probabilities)
 			response[nat_var] = res

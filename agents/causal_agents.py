@@ -30,7 +30,7 @@ class CausalAgent(Agent):
 		Elige la mejor combinación acciones que puede tomar
 		de acuerdo con la mayor probilidad de obtener cierto
 		valor en el target. Por ahora sólo funciona para una variable
-		targer y múltiples variables intervenidas.
+		target y múltiples variables intervenidas.
 		"""
 		target_name = target["variable"]
 		target_value = int(target["value"])
@@ -40,6 +40,7 @@ class CausalAgent(Agent):
 		idx = np.random.choice(len(cartesian_prod))
 		best_actions = cartesian_prod[idx]
 		max_prob = -float("inf")
+
 		for vars_tuples in itertools.product(*val_inter_vars):
 			query_dict = dict()
 			for i in range(len(intervened_variables)):
@@ -66,6 +67,7 @@ class CausalAgent(Agent):
 		cartesian_prod = list(itertools.product(*val_inter_vars))
 		best_actions = None
 		max_prob = threshold
+		print(val_inter_vars)
 		for vars_tuples in itertools.product(*val_inter_vars):
 			query_dict = dict()
 			for i in range(len(intervened_variables)):
@@ -200,7 +202,7 @@ class HalfBlindAgent(CausalAgent):
 		"""
 		adj_list = self.model.get_nodes_and_predecessors()
 		
-		for node in adj_list:
+		for node in observation_dict:
 			node_object = dict()
 			parents_to_string = ""
 			node_value = observation_dict[node]
@@ -211,6 +213,27 @@ class HalfBlindAgent(CausalAgent):
 
 		# logging.info("ALPHAS after counting update")
 		# logging.info(json.dumps(self.alpha_params, indent=2))
+	def make_decision_using_obs(self, target, intervened_variables, obs):
+		target_name = target["variable"]
+		target_value = int(target["value"])
+		val_inter_vars = [self.model.get_variable_values(i)\
+							for i in intervened_variables]
+		cartesian_prod = list(itertools.product(*val_inter_vars))
+		idx = np.random.choice(len(cartesian_prod))
+		best_actions = cartesian_prod[idx]
+		max_prob = -float("inf")
+
+		for vars_tuples in itertools.product(*val_inter_vars):
+			query_dict = dict()
+			for i in range(len(intervened_variables)):
+				query_dict["X"] = obs["X"]
+				query_dict["Y"] = obs["Y"]
+				query_dict[intervened_variables[i]] = vars_tuples[i]
+			prob_table = self.do_calculus(target_name, query_dict)
+			logging.info(prob_table)
+			prob = prob_table[target_value]
+			if prob > max_prob: max_prob = prob; best_actions = vars_tuples
+		return best_actions
 	def training(self, rounds, target_value):
 		intervention_vars = self.model.get_intervention_variables()
 		target = {
@@ -218,7 +241,10 @@ class HalfBlindAgent(CausalAgent):
 			"value" : target_value
 			}
 		for i in range(rounds):
-			best_actions = self.make_decision(target, intervention_vars)
+			self.update_beliefs({"X" : 0, "Y" : 1})
+			self.update_cpts_causal_model()
+			best_actions = self.make_decision(
+				target, intervention_vars)
 			# logging.info("Best actions {} {}".format(intervention_vars, best_actions))
 			nature_response = self.nature.action_simulator(intervention_vars, \
 								best_actions)

@@ -12,6 +12,8 @@
       "Treatment",
       "Reaction"
     ],
+    ["X", "Disease"],
+    ["Y", "Treatment"],
     [
       "Reaction",
       "Lives"
@@ -26,11 +28,38 @@
       ]
     },
     {
-      "variable": "Treatment",
+      "variable": "X",
       "variable_card" : 2,
       "values" : [
         [0.5, 0.5]
       ]
+    },
+    {
+      "variable": "Y",
+      "variable_card" : 2,
+      "values" : [
+        [0.5, 0.5]
+      ]
+    },
+    {
+      "variable": "Disease",
+      "variable_card" : 2,
+      "values" : [
+        [0.7, 0.4],
+        [0.3, 0.6]
+      ],
+      "evidence_card" : [2],
+      "evidence" : ["X"]
+    },
+    {
+      "variable": "Treatment",
+      "variable_card" : 2,
+      "values" : [
+        [0.7, 0.4],
+        [0.3, 0.6]
+      ],
+      "evidence_card" : [2],
+      "evidence" : ["Y"]
     },
     {
       "variable": "Reaction",
@@ -59,8 +88,8 @@
   ],
   "target": "Lives",
   "nature_variables": [
-    "Disease",
-    "Treatment"
+    "X",
+    "Y"
   ],
   "interventions" : [
     "Treatment"
